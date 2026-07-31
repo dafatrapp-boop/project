@@ -1,15 +1,16 @@
 import { redirect } from 'next/navigation';
-import { Mail } from 'lucide-react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { SubmitButton } from '@/components/ui/submit-button';
-import { Alert } from '@/components/ui/alert';
 import { AuthShell } from '@/components/auth/auth-shell';
+import { AuthCard } from '@/components/auth/auth-card';
+import { AuthAlert } from '@/components/auth/auth-alert';
 
 async function requestResetAction(formData: FormData) {
   'use server';
 
-  const email = String(formData.get('email') ?? '').trim();
+  const email = String(formData.get('email') ?? '');
   if (email) {
     const supabase = createClient();
     // redirectTo must be an allow-listed URL in Supabase Auth settings.
@@ -30,36 +31,28 @@ export default function ResetPasswordPage({
 }) {
   return (
     <AuthShell
-      title="استعادة كلمة المرور"
-      subtitle="أدخل بريدك الإلكتروني وسنرسل لك رابطًا لإعادة تعيين كلمة المرور."
-      footer={
-        <>
-          تذكرت كلمة المرور؟{' '}
-          <a href="/login" className="font-medium text-brand-600 hover:underline">
-            تسجيل الدخول
-          </a>
-        </>
-      }
+      panelTitle="لا تفوّت أي رسالة من عميل محتمل"
+      panelSubtitle="نظّم كل محادثاتك وطلباتك في مكان واحد، مهما كانت المنصة التي جاء منها العميل."
     >
-      {searchParams.sent && (
-        <Alert variant="success" className="mb-4">
-          إذا كان البريد الإلكتروني مسجلًا لدينا، فستصلك رسالة تحتوي على رابط الاستعادة
-          خلال دقائق.
-        </Alert>
-      )}
+      <AuthCard title="استعادة كلمة المرور" description="أدخل بريدك الإلكتروني وسنرسل لك رابطًا لإعادة تعيين كلمة المرور.">
+        {searchParams.sent && (
+          <AuthAlert tone="success">
+            إذا كان البريد الإلكتروني مسجلًا لدينا، فستصلك رسالة تحتوي على رابط الاستعادة خلال دقائق.
+          </AuthAlert>
+        )}
 
-      <form action={requestResetAction} className="flex flex-col gap-4" noValidate>
-        <Input
-          name="email"
-          type="email"
-          label="البريد الإلكتروني"
-          placeholder="you@example.com"
-          autoComplete="email"
-          icon={<Mail className="h-4 w-4" />}
-          required
-        />
-        <SubmitButton pendingText="جارٍ الإرسال...">إرسال رابط الاستعادة</SubmitButton>
-      </form>
+        <form action={requestResetAction} className="flex flex-col gap-4">
+          <Input name="email" type="email" label="البريد الإلكتروني" placeholder="you@example.com" required autoComplete="email" />
+          <Button type="submit" size="lg" className="mt-2 w-full">إرسال رابط الاستعادة</Button>
+        </form>
+
+        <p className="mt-7 text-center text-sm text-ink-muted">
+          تذكرت كلمة المرور؟{' '}
+          <Link href="/login" className="font-semibold text-brand-600 transition-colors hover:text-brand-700">
+            تسجيل الدخول
+          </Link>
+        </p>
+      </AuthCard>
     </AuthShell>
   );
 }

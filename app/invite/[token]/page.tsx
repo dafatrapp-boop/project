@@ -1,5 +1,10 @@
+import Link from 'next/link';
+import { ShieldAlert, UserPlus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
+import { AuthShell } from '@/components/auth/auth-shell';
+import { AuthCard } from '@/components/auth/auth-card';
+import { AuthAlert } from '@/components/auth/auth-alert';
 import { ROLE_LABELS } from '@/app/(dashboard)/team/constants';
 import { acceptInvitationAction } from './actions';
 
@@ -19,26 +24,37 @@ export default async function InvitePage({
   const invitation = data?.[0];
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-surface-subtle px-4">
-      <div className="w-full max-w-sm rounded-lg border border-border bg-surface p-6 text-center shadow-card">
+    <AuthShell
+      panelTitle="اعمل مع فريقك على مساحة عمل واحدة"
+      panelSubtitle="شارك زملاءك إدارة المحادثات، الطلبات، والصفحات بصلاحيات مخصصة لكل عضو."
+    >
+      <AuthCard align="center">
         {!invitation || !invitation.valid ? (
           <>
-            <h1 className="mb-2 text-xl font-semibold text-ink">الدعوة غير صالحة</h1>
-            <p className="text-sm text-ink-muted">
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-danger-50 text-danger">
+              <ShieldAlert size={26} />
+            </div>
+            <h1 className="mb-2 text-[22px] font-semibold tracking-[-0.01em] text-ink">الدعوة غير صالحة</h1>
+            <p className="text-[15px] leading-relaxed text-ink-muted">
               انتهت صلاحية هذه الدعوة أو أنها استُخدمت من قبل. يرجى طلب دعوة جديدة من مالك مساحة العمل.
             </p>
           </>
         ) : (
           <>
-            <h1 className="mb-2 text-xl font-semibold text-ink">دعوة للانضمام إلى {invitation.workspace_name}</h1>
-            <p className="mb-6 text-sm text-ink-muted">
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+              <UserPlus size={26} />
+            </div>
+            <h1 className="mb-2 text-[22px] font-semibold tracking-[-0.01em] text-ink">
+              دعوة للانضمام إلى {invitation.workspace_name}
+            </h1>
+            <p className="mb-7 text-[15px] leading-relaxed text-ink-muted">
               تمت دعوتك للانضمام بصفة &quot;{ROLE_LABELS[invitation.role]}&quot;.
             </p>
 
             {searchParams.error && (
-              <div className="mb-4 rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
+              <AuthAlert tone="danger">
                 تعذر قبول الدعوة. تأكد من تسجيل الدخول بنفس البريد المدعو ({invitation.email}).
-              </div>
+              </AuthAlert>
             )}
 
             {user ? (
@@ -48,21 +64,21 @@ export default async function InvitePage({
                 </Button>
               </form>
             ) : (
-              <div className="flex flex-col gap-2">
-                <p className="text-xs text-ink-faint">
+              <div className="flex flex-col gap-2.5">
+                <p className="mb-1 text-xs text-ink-faint">
                   سجّل الدخول أو أنشئ حسابًا بالبريد {invitation.email} لقبول الدعوة.
                 </p>
-                <a href={`/login?redirectTo=${encodeURIComponent(`/invite/${params.token}`)}`}>
+                <Link href={`/login?redirectTo=${encodeURIComponent(`/invite/${params.token}`)}`}>
                   <Button size="lg" className="w-full">تسجيل الدخول</Button>
-                </a>
-                <a href="/signup">
+                </Link>
+                <Link href="/signup">
                   <Button size="lg" variant="secondary" className="w-full">إنشاء حساب جديد</Button>
-                </a>
+                </Link>
               </div>
             )}
           </>
         )}
-      </div>
-    </main>
+      </AuthCard>
+    </AuthShell>
   );
 }

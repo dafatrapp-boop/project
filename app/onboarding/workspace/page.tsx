@@ -1,10 +1,25 @@
 import { redirect } from 'next/navigation';
+import {
+  Stethoscope,
+  Sparkles,
+  Building2,
+  GraduationCap,
+  Scale,
+  Briefcase,
+  ShoppingBag,
+  UtensilsCrossed,
+  LayoutGrid,
+  Check,
+} from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { AuthShell } from '@/components/auth/auth-shell';
+import { AuthCard } from '@/components/auth/auth-card';
+import { AuthAlert } from '@/components/auth/auth-alert';
 import { TEMPLATES } from '@/lib/landing-pages/templates';
 
-const INDUSTRIES: { 
+const INDUSTRIES: {
   value:
     | 'clinic'
     | 'beauty_salon'
@@ -17,28 +32,20 @@ const INDUSTRIES: {
     | 'other';
   label: string;
   hint: string;
+  icon: typeof Stethoscope;
 }[] = [
-  { value: 'clinic', label: 'عيادة أو مركز طبي', hint: 'أسنان، جلدية، تجميل، علاج طبيعي' },
-  { value: 'beauty_salon', label: 'صالون تجميل', hint: 'حلاقة، مكياج، عناية بالبشرة والشعر' },
-  { value: 'real_estate', label: 'عقارات', hint: 'مكاتب عقارية، وسطاء، بيع شقق' },
-  { value: 'training_center', label: 'مركز تدريب / أكاديمية', hint: 'دورات لغات، برمجة، تدريب مهني' },
-  { value: 'lawyer', label: 'محاماة', hint: 'استشارات قانونية وقضايا' },
-  { value: 'consultant', label: 'استشارات', hint: 'استشارات أعمال، تسويق، إدارية' },
-  { value: 'instagram_store', label: 'متجر انستغرام', hint: 'أزياء، عطور، إكسسوارات، منتجات منزلية' },
-  { value: 'restaurant', label: 'مطعم', hint: 'طلبات عبر السوشيال ميديا' },
-  { value: 'other', label: 'مجال آخر', hint: 'أي نشاط تجاري آخر' },
+  { value: 'clinic', label: 'عيادة أو مركز طبي', hint: 'أسنان، جلدية، تجميل، علاج طبيعي', icon: Stethoscope },
+  { value: 'beauty_salon', label: 'صالون تجميل', hint: 'حلاقة، مكياج، عناية بالبشرة والشعر', icon: Sparkles },
+  { value: 'real_estate', label: 'عقارات', hint: 'مكاتب عقارية، وسطاء، بيع شقق', icon: Building2 },
+  { value: 'training_center', label: 'مركز تدريب / أكاديمية', hint: 'دورات لغات، برمجة، تدريب مهني', icon: GraduationCap },
+  { value: 'lawyer', label: 'محاماة', hint: 'استشارات قانونية وقضايا', icon: Scale },
+  { value: 'consultant', label: 'استشارات', hint: 'استشارات أعمال، تسويق، إدارية', icon: Briefcase },
+  { value: 'instagram_store', label: 'متجر انستغرام', hint: 'أزياء، عطور، إكسسوارات، منتجات منزلية', icon: ShoppingBag },
+  { value: 'restaurant', label: 'مطعم', hint: 'طلبات عبر السوشيال ميديا', icon: UtensilsCrossed },
+  { value: 'other', label: 'مجال آخر', hint: 'أي نشاط تجاري آخر', icon: LayoutGrid },
 ];
 
-type Industry =
-  | 'clinic'
-  | 'beauty_salon'
-  | 'real_estate'
-  | 'training_center'
-  | 'lawyer'
-  | 'consultant'
-  | 'instagram_store'
-  | 'restaurant'
-  | 'other';
+type Industry = (typeof INDUSTRIES)[number]['value'];
 
 function slugify(name: string) {
   return (
@@ -154,69 +161,63 @@ export default function WorkspaceOnboardingPage({
   searchParams: { error?: string };
 }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-surface-subtle px-4 py-10">
-      <div className="w-full max-w-lg rounded-lg border border-border bg-surface p-6 shadow-card">
-        <h1 className="mb-1 text-xl font-semibold text-ink">
-          أنشئ مساحة عملك
-        </h1>
+    <AuthShell
+      formWidth="lg"
+      panelTitle="سنجهّز صفحتك تلقائيًا بناءً على نشاطك"
+      panelSubtitle="اختر المجال الأقرب لعملك، وسنقترح عليك قالب صفحة هبوط جاهز يمكنك تعديله لاحقًا بحرية."
+    >
+      <AuthCard title="أنشئ مساحة عملك" description="سنخصص لك التجربة بناءً على نوع نشاطك التجاري.">
+        {searchParams.error && <AuthAlert tone="danger">{searchParams.error}</AuthAlert>}
 
-        <p className="mb-6 text-sm text-ink-muted">
-          سنخصص لك التجربة بناءً على نوع نشاطك التجاري.
-        </p>
-
-        {searchParams.error && (
-          <div className="mb-4 rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
-            {searchParams.error}
-          </div>
-        )}
-
-        <form action={createWorkspaceAction} className="flex flex-col gap-5">
+        <form action={createWorkspaceAction} className="flex flex-col gap-6">
           <Input
             name="name"
             label="اسم النشاط التجاري"
             placeholder="مثال: عيادة الابتسامة"
             required
+            autoComplete="organization"
           />
 
           <fieldset>
-            <legend className="mb-2 text-sm font-medium text-ink">
-              مجال النشاط
-            </legend>
+            <legend className="mb-3 text-sm font-medium text-ink">مجال النشاط</legend>
 
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {INDUSTRIES.map((industry, i) => (
-                <label
-                  key={industry.value}
-                  className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-3 text-start has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50"
-                >
-                  <input
-                    type="radio"
-                    name="industry"
-                    value={industry.value}
-                    defaultChecked={i === 0}
-                    className="mt-1"
-                    required
-                  />
-
-                  <span>
-                    <span className="block text-sm font-medium text-ink">
-                      {industry.label}
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              {INDUSTRIES.map((industry, i) => {
+                const Icon = industry.icon;
+                return (
+                  <label
+                    key={industry.value}
+                    className="group relative flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-surface p-3.5 text-start transition-all duration-150 hover:border-ink/20 hover:shadow-subtle has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:shadow-glow"
+                  >
+                    <input
+                      type="radio"
+                      name="industry"
+                      value={industry.value}
+                      defaultChecked={i === 0}
+                      className="peer sr-only"
+                      required
+                    />
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-subtle text-ink-muted transition-colors peer-checked:bg-brand-500 peer-checked:text-white">
+                      <Icon size={17} />
                     </span>
-
-                    <span className="block text-xs text-ink-muted">
-                      {industry.hint}
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-ink">{industry.label}</span>
+                      <span className="block text-xs leading-relaxed text-ink-muted">{industry.hint}</span>
                     </span>
-                  </span>
-                </label>
-              ))}
+                    <span className="absolute end-3 top-3 flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 text-white opacity-0 transition-opacity peer-checked:opacity-100">
+                      <Check size={10} strokeWidth={3} />
+                    </span>
+                  </label>
+                );
+              })}
             </div>
           </fieldset>
 
-          <Button type="submit" size="lg">
+          <Button type="submit" size="lg" className="w-full">
             متابعة
           </Button>
         </form>
-      </div>
-    </main>
+      </AuthCard>
+    </AuthShell>
   );
 }

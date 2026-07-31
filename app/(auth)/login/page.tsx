@@ -1,28 +1,29 @@
 import { redirect } from 'next/navigation';
-import { Mail } from 'lucide-react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
-import { SubmitButton } from '@/components/ui/submit-button';
-import { Alert } from '@/components/ui/alert';
 import { AuthShell } from '@/components/auth/auth-shell';
+import { AuthCard } from '@/components/auth/auth-card';
+import { AuthAlert } from '@/components/auth/auth-alert';
 
 async function loginAction(formData: FormData) {
   'use server';
 
-  const email = String(formData.get('email') ?? '').trim();
+  const email = String(formData.get('email') ?? '');
   const password = String(formData.get('password') ?? '');
   const redirectTo = String(formData.get('redirectTo') ?? '/dashboard');
 
   if (!email || !password) {
-    redirect(`/login?error=missing_fields&redirectTo=${encodeURIComponent(redirectTo)}`);
+    redirect('/login?error=missing_fields');
   }
 
   const supabase = createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    redirect(`/login?error=invalid_credentials&redirectTo=${encodeURIComponent(redirectTo)}`);
+    redirect('/login?error=invalid_credentials');
   }
 
   redirect(redirectTo);
@@ -37,52 +38,38 @@ export default function LoginPage({
     missing_fields: 'يرجى إدخال البريد الإلكتروني وكلمة المرور.',
     invalid_credentials: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
   };
-  const redirectTo = searchParams.redirectTo ?? '/dashboard';
 
   return (
     <AuthShell
-      title="تسجيل الدخول"
-      subtitle="مرحبًا بعودتك إلى SocialSales OS"
-      footer={
-        <>
-          ليس لديك حساب؟{' '}
-          <a href="/signup" className="font-medium text-brand-600 hover:underline">
-            إنشاء حساب جديد
-          </a>
-        </>
-      }
+      panelTitle="حوّل رسائل السوشيال ميديا إلى عملاء بشكل تلقائي"
+      panelSubtitle="لوحة تحكم واحدة لصفحاتك، عملائك، وطلباتك — من أول رسالة حتى إتمام البيع."
     >
-      {searchParams.error && (
-        <Alert variant="error" className="mb-4">
-          {errorMessages[searchParams.error] ?? 'حدث خطأ غير متوقع. حاول مرة أخرى.'}
-        </Alert>
-      )}
+      <AuthCard title="تسجيل الدخول" description="مرحبًا بعودتك إلى SocialSales OS">
+        {searchParams.error && (
+          <AuthAlert tone="danger">
+            {errorMessages[searchParams.error] ?? 'حدث خطأ غير متوقع. حاول مرة أخرى.'}
+          </AuthAlert>
+        )}
 
-      <form action={loginAction} className="flex flex-col gap-4" noValidate>
-        <input type="hidden" name="redirectTo" value={redirectTo} />
-        <Input
-          name="email"
-          type="email"
-          label="البريد الإلكتروني"
-          placeholder="you@example.com"
-          autoComplete="email"
-          icon={<Mail className="h-4 w-4" />}
-          required
-        />
-        <div className="flex flex-col gap-1.5">
-          <PasswordInput
-            name="password"
-            label="كلمة المرور"
-            placeholder="••••••••"
-            autoComplete="current-password"
-            required
-          />
-          <a href="/reset-password" className="self-start text-sm text-brand-600 hover:underline">
-            نسيت كلمة المرور؟
-          </a>
-        </div>
-        <SubmitButton pendingText="جارٍ تسجيل الدخول...">تسجيل الدخول</SubmitButton>
-      </form>
+        <form action={loginAction} className="flex flex-col gap-4">
+          <input type="hidden" name="redirectTo" value={searchParams.redirectTo ?? '/dashboard'} />
+          <Input name="email" type="email" label="البريد الإلكتروني" placeholder="you@example.com" required autoComplete="email" />
+          <div className="flex flex-col gap-1.5">
+            <PasswordInput name="password" label="كلمة المرور" placeholder="••••••••" required autoComplete="current-password" />
+            <Link href="/reset-password" className="self-start text-sm font-medium text-brand-600 transition-colors hover:text-brand-700">
+              نسيت كلمة المرور؟
+            </Link>
+          </div>
+          <Button type="submit" size="lg" className="mt-2 w-full">تسجيل الدخول</Button>
+        </form>
+
+        <p className="mt-7 text-center text-sm text-ink-muted">
+          ليس لديك حساب؟{' '}
+          <Link href="/signup" className="font-semibold text-brand-600 transition-colors hover:text-brand-700">
+            إنشاء حساب جديد
+          </Link>
+        </p>
+      </AuthCard>
     </AuthShell>
   );
 }

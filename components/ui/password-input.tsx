@@ -1,31 +1,24 @@
 'use client';
 
-import { forwardRef, useId, useState, type InputHTMLAttributes } from 'react';
-import { Eye, EyeOff, Lock } from 'lucide-react';
+import { forwardRef, useState, type InputHTMLAttributes } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface PasswordInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
+interface PasswordInputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   hint?: string;
 }
 
 /**
- * Password field with a show/hide toggle. Ships with:
- * - a leading lock icon (visual affordance, not decorative-only — it
- *   reinforces the field's purpose for users scanning quickly)
- * - a toggle button that is keyboard-reachable and announces its
- *   current action via aria-label + aria-pressed
- * - optional hint text (e.g. "8 أحرف على الأقل") rendered below,
- *   linked with aria-describedby so screen readers read it with the field
+ * Same field contract as <Input type="password" /> (same name/value/
+ * onChange), just with a visibility toggle. Purely presentational —
+ * does not alter what gets submitted.
  */
 export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
   ({ className, label, error, hint, id, ...props }, ref) => {
     const [visible, setVisible] = useState(false);
-    const autoId = useId();
-    const inputId = id ?? props.name ?? autoId;
-    const hintId = hint ? `${inputId}-hint` : undefined;
-    const errorId = error ? `${inputId}-error` : undefined;
+    const inputId = id ?? props.name;
 
     return (
       <div className="flex flex-col gap-1.5">
@@ -35,46 +28,42 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
           </label>
         )}
         <div className="relative">
-          <Lock
-            className="pointer-events-none absolute inset-y-0 start-3 my-auto h-4 w-4 text-ink-faint"
-            aria-hidden="true"
-          />
           <input
             ref={ref}
             id={inputId}
             type={visible ? 'text' : 'password'}
             className={cn(
-              'h-11 w-full rounded-md border border-border bg-surface ps-9 pe-11 text-sm text-ink',
+              'h-11 w-full rounded-lg border border-border bg-surface px-3.5 pe-11 text-[15px] text-ink',
+              'shadow-subtle transition-all duration-150',
               'placeholder:text-ink-faint',
-              'transition-colors focus-visible:border-brand-500',
-              'disabled:cursor-not-allowed disabled:bg-surface-subtle disabled:text-ink-faint',
-              error && 'border-danger',
+              'hover:border-ink/20',
+              'focus-visible:border-brand-500 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/12',
+              error && 'border-danger focus-visible:border-danger focus-visible:ring-danger/12',
               className
             )}
             aria-invalid={!!error}
-            aria-describedby={cn(hintId, errorId) || undefined}
+            aria-describedby={error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined}
             {...props}
           />
           <button
             type="button"
+            tabIndex={-1}
             onClick={() => setVisible((v) => !v)}
             aria-label={visible ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
-            aria-pressed={visible}
-            className="absolute inset-y-0 end-0 flex w-11 items-center justify-center text-ink-faint transition-colors hover:text-ink-muted focus-visible:text-ink-muted"
+            className="absolute inset-y-0 end-0 flex w-11 items-center justify-center text-ink-faint transition-colors hover:text-ink"
           >
-            {visible ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
+            {visible ? <EyeOff size={17} /> : <Eye size={17} />}
           </button>
         </div>
-        {hint && !error && (
-          <p id={hintId} className="text-xs text-ink-faint">
-            {hint}
-          </p>
-        )}
-        {error && (
-          <p id={errorId} role="alert" className="text-sm text-danger">
+        {error ? (
+          <p id={`${inputId}-error`} className="text-sm text-danger">
             {error}
           </p>
-        )}
+        ) : hint ? (
+          <p id={`${inputId}-hint`} className="text-xs text-ink-faint">
+            {hint}
+          </p>
+        ) : null}
       </div>
     );
   }

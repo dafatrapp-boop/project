@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { PasswordInput } from '@/components/ui/password-input';
-import { Alert } from '@/components/ui/alert';
 import { AuthShell } from '@/components/auth/auth-shell';
-import { Loader2 } from 'lucide-react';
+import { AuthCard } from '@/components/auth/auth-card';
+import { AuthAlert } from '@/components/auth/auth-alert';
 
 /**
  * Supabase sends the user here already authenticated via a short-lived
@@ -21,8 +21,6 @@ export default function ResetPasswordConfirmPage() {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const mismatch = confirm.length > 0 && password !== confirm;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -50,41 +48,33 @@ export default function ResetPasswordConfirmPage() {
   }
 
   return (
-    <AuthShell title="تعيين كلمة مرور جديدة" subtitle="اختر كلمة مرور قوية لحسابك.">
-      {error && (
-        <Alert variant="error" className="mb-4">
-          {error}
-        </Alert>
-      )}
+    <AuthShell
+      panelTitle="خصوصية حسابك وبيانات عملائك أولويتنا"
+      panelSubtitle="اختر كلمة مرور قوية للمتابعة إلى لوحة التحكم بأمان."
+    >
+      <AuthCard title="تعيين كلمة مرور جديدة" description="اختر كلمة مرور قوية لحسابك.">
+        {error && <AuthAlert tone="danger">{error}</AuthAlert>}
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-        <PasswordInput
-          label="كلمة المرور الجديدة"
-          autoComplete="new-password"
-          hint="8 أحرف على الأقل"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        <PasswordInput
-          label="تأكيد كلمة المرور"
-          autoComplete="new-password"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          error={mismatch ? 'كلمتا المرور غير متطابقتين.' : undefined}
-          required
-        />
-        <Button type="submit" size="lg" disabled={loading} aria-busy={loading} className="w-full">
-          {loading ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              جارٍ الحفظ...
-            </>
-          ) : (
-            'حفظ كلمة المرور'
-          )}
-        </Button>
-      </form>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <PasswordInput
+            label="كلمة المرور الجديدة"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="new-password"
+          />
+          <PasswordInput
+            label="تأكيد كلمة المرور"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            required
+            autoComplete="new-password"
+          />
+          <Button type="submit" size="lg" loading={loading} className="mt-2 w-full">
+            {loading ? 'جارٍ الحفظ...' : 'حفظ كلمة المرور'}
+          </Button>
+        </form>
+      </AuthCard>
     </AuthShell>
   );
 }
