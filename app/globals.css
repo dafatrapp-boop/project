@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===========================================================
+   SocialSales OS — Design Tokens
+   These are the single source of truth for color/spacing/type.
+   Do not hardcode hex colors in components — use these tokens.
+   =========================================================== */
+:root {
+  --surface: 0 0% 100%;
+  --surface-subtle: 210 20% 98%;
+  --surface-raised: 0 0% 100%;
+  --border: 214 20% 91%;
+  --ink: 222 20% 12%;
+  --ink-muted: 220 9% 42%;
+  --ink-faint: 220 9% 62%;
+
+  --brand-50: 234 100% 97%;
+  --brand-100: 234 89% 93%;
+  --brand-400: 234 80% 66%;
+  --brand-500: 234 76% 58%;
+  --brand-600: 234 70% 50%;
+  --brand-700: 234 65% 42%;
+
+  --success: 152 60% 36%;
+  --warning: 38 92% 50%;
+  --danger: 0 72% 51%;
+
+  --radius: 10px;
+}
+
+.dark {
+  --surface: 222 24% 9%;
+  --surface-subtle: 222 22% 12%;
+  --surface-raised: 222 22% 14%;
+  --border: 220 15% 22%;
+  --ink: 210 20% 96%;
+  --ink-muted: 216 10% 70%;
+  --ink-faint: 216 10% 50%;
+}
+
+html {
+  direction: rtl;
+}
+
+body {
+  background-color: hsl(var(--surface-subtle));
+  color: hsl(var(--ink));
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
+/* Directional icons (chevrons, arrows) must be mirrored in RTL.
+   Apply this utility class to any icon that implies direction
+   (back/forward/next/prev) — never rely on text-align alone. */
+[dir='rtl'] .icon-flip {
+  transform: scaleX(-1);
+}
+
+/* Accessible, visible focus ring across the app */
+:focus-visible {
+  outline: 2px solid hsl(var(--brand-500));
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
