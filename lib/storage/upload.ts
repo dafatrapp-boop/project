@@ -38,7 +38,7 @@ export async function uploadLandingPageImage(
     .upload(path, file, { cacheControl: '3600', upsert: false });
 
   if (error) {
-    return { ok: false, error: 'تعذر رفع الصورة. حاول مرة أخرى.' };
+    return { ok: false, error: `تعذر رفع الصورة: ${error.message}` };
   }
 
   const { data } = supabase.storage.from('landing-page-images').getPublicUrl(path);

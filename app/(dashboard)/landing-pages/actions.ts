@@ -133,12 +133,14 @@ export async function togglePublishAction(
   // actual query failure — surface that distinctly so it isn't
   // reported to the user as a generic success.
   if (error) {
-    return { ok: false, error: 'تعذر تحديث حالة النشر. تحقق من صلاحياتك على المساحة.' };
+    console.error('[landing_pages.togglePublish] update failed:', error);
+    return { ok: false, error: `تعذر تحديث حالة النشر: ${error.message} (code: ${error.code ?? 'n/a'})` };
   }
   if (!data) {
+    console.error('[landing_pages.togglePublish] update matched 0 rows (likely RLS) for page', pageId);
     return {
       ok: false,
-      error: 'لم يتم حفظ التغيير — على الأغلب بسبب سياسات RLS بقاعدة البيانات تمنع هذا التحديث.',
+      error: 'لم يتم حفظ التغيير — لم تُطابق أي صفوف (على الأغلب RLS تمنع هذا التحديث لهذه الصفحة).',
     };
   }
   return { ok: true };
