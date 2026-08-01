@@ -8,6 +8,7 @@ import { WEEKDAY_LABELS, WEEKDAY_ORDER } from '@/lib/appointments/constants';
 import { PageGuide } from '@/components/guide/page-guide';
 import { getGuideDismissed } from '@/lib/guide/state';
 import { SETTINGS_GUIDE } from '@/lib/guide/content';
+import { WorkspaceTabs } from '@/components/layout/workspace-tabs';
 import {
   updateMetaPixelAction,
   updateAppointmentSettingsAction,
@@ -67,6 +68,7 @@ const workspace = Array.isArray(workspaceRaw) ? workspaceRaw[0] ?? null : worksp
 
   return (
     <div className="flex flex-col gap-6">
+      <WorkspaceTabs />
       <div>
         <h1 className="text-xl font-semibold text-ink">الإعدادات</h1>
         <p className="text-sm text-ink-muted">معلومات مساحة العمل الحالية.</p>

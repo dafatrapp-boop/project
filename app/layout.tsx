@@ -17,13 +17,31 @@ export const metadata: Metadata = {
   description: 'حوّل زوار إعلاناتك وصفحات التواصل الاجتماعي إلى عملاء فعليين',
 };
 
+// Phase 2 — dark mode bootstrap. Runs before paint (blocking, inline)
+// so there is no light-mode flash for users with a saved 'dark'
+// preference or an OS-level dark preference and no saved choice yet.
+// Reads/writes only `localStorage['ss-theme']` — no business data,
+// no network call, nothing that touches auth/Supabase/RLS.
+const themeInitScript = `
+(function () {
+  try {
+    var stored = localStorage.getItem('ss-theme');
+    var dark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (dark) document.documentElement.classList.add('dark');
+  } catch (e) {}
+})();
+`;
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ar" dir="rtl" className={arabicFont.variable}>
+    <html lang="ar" dir="rtl" className={arabicFont.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="font-sans antialiased">
         <ToastProvider>{children}</ToastProvider>
       </body>

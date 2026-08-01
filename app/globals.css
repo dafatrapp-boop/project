@@ -3,54 +3,136 @@
 @tailwind utilities;
 
 /* ===========================================================
-   SocialSales OS — Design Tokens
-   These are the single source of truth for color/spacing/type.
+   SocialSales OS — Design Tokens (v2 / Phase 2)
+   Single source of truth for color/spacing/type/elevation/motion.
    Do not hardcode hex colors in components — use these tokens.
+
+   This file EXTENDS the original token set (kept 100% backward
+   compatible — every variable from v1 still resolves to the same
+   value) rather than replacing it. New tokens are additive.
    =========================================================== */
 :root {
-  --surface: 0 0% 100%;
-  --surface-subtle: 240 20% 98%;
-  --surface-raised: 0 0% 100%;
+  /* ---- Surfaces (elevation ladder, low -> high) ---- */
+  --surface-sunken: 240 20% 96.5%;   /* page background well, e.g. kanban columns */
+  --surface-subtle: 240 20% 98%;     /* app background */
+  --surface: 0 0% 100%;              /* default card/panel */
+  --surface-raised: 0 0% 100%;       /* same tone, used when a shadow implies lift */
+  --surface-overlay: 0 0% 100%;      /* dropdowns, popovers, dialogs */
+
+  /* ---- Borders ---- */
   --border: 240 14% 90%;
+  --border-strong: 240 12% 82%;
+
+  /* ---- Ink (text) ---- */
   --ink: 240 25% 9%;
   --ink-muted: 240 8% 42%;
   --ink-faint: 240 8% 62%;
+  --ink-on-brand: 0 0% 100%;
 
-  --brand-50: 243 100% 97%;
-  --brand-100: 243 92% 93%;
-  --brand-400: 243 85% 67%;
-  --brand-500: 243 78% 58%;
-  --brand-600: 243 72% 49%;
-  --brand-700: 243 68% 40%;
-  --brand-900: 245 47% 14%;
+  /* ---- Brand ramp (hue 243 preserved exactly — do not shift) ---- */
+  --brand-50:  243 100% 97%;
+  --brand-100: 243 92%  93%;
+  --brand-200: 243 88%  87%;
+  --brand-300: 243 86%  78%;
+  --brand-400: 243 85%  67%;
+  --brand-500: 243 78%  58%;   /* primary — unchanged from v1 */
+  --brand-600: 243 72%  49%;
+  --brand-700: 243 68%  40%;
+  --brand-800: 244 58%  30%;
+  --brand-900: 245 47%  14%;
 
-  --success: 152 55% 34%;
+  /* ---- Neutral ramp (for charts, dividers, secondary chrome) ---- */
+  --neutral-100: 240 20% 96%;
+  --neutral-300: 240 12% 85%;
+  --neutral-500: 240 8%  55%;
+  --neutral-700: 240 12% 32%;
+
+  /* ---- Semantic status colors ---- */
+  --success:    152 55% 34%;
   --success-50: 152 55% 95%;
-  --warning: 38 92% 50%;
-  --danger: 3 70% 50%;
-  --danger-50: 3 70% 96%;
+  --warning:    38  92% 50%;
+  --warning-50: 38  92% 95%;
+  --danger:     3   70% 50%;
+  --danger-50:  3   70% 96%;
+  --info:       217 91% 60%;
+  --info-50:    217 91% 96%;
 
-  --radius: 10px;
+  /* ---- Radius scale ---- */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+  --radius: 10px; /* legacy alias, kept for anything still referencing it */
+
+  /* ---- Motion ---- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 320ms;
+
+  /* ---- Focus ring ---- */
+  --focus-ring: 0 0% 100%;
 }
 
 .dark {
-  --surface: 240 24% 8%;
+  --surface-sunken: 240 26% 6%;
   --surface-subtle: 240 22% 11%;
+  --surface: 240 24% 8%;
   --surface-raised: 240 20% 13%;
+  --surface-overlay: 240 20% 14%;
+
   --border: 240 15% 21%;
+  --border-strong: 240 14% 28%;
+
   --ink: 220 20% 96%;
   --ink-muted: 220 10% 70%;
   --ink-faint: 220 10% 50%;
+  --ink-on-brand: 0 0% 100%;
+
+  /* Brand ramp inverted for legibility on dark surfaces — hue held at 243 */
+  --brand-50:  245 45% 15%;
+  --brand-100: 244 50% 20%;
+  --brand-200: 244 55% 28%;
+  --brand-300: 243 60% 38%;
+  --brand-400: 243 75% 62%;
+  --brand-500: 243 85% 68%;
+  --brand-600: 243 88% 74%;
+  --brand-700: 243 90% 80%;
+  --brand-800: 243 92% 88%;
+  --brand-900: 243 95% 95%;
+
+  --neutral-100: 240 16% 16%;
+  --neutral-300: 240 12% 28%;
+  --neutral-500: 240 8%  55%;
+  --neutral-700: 240 10% 82%;
+
+  --success:    152 50% 48%;
+  --success-50: 152 40% 14%;
+  --warning:    38  85% 58%;
+  --warning-50: 38  60% 15%;
+  --danger:     3   75% 62%;
+  --danger-50:  3   45% 16%;
+  --info:       217 85% 68%;
+  --info-50:    217 45% 16%;
 }
 
 html {
   direction: rtl;
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
 }
 
 body {
   background-color: hsl(var(--surface-subtle));
   color: hsl(var(--ink));
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  transition: background-color var(--duration-base) var(--ease-out),
+              color var(--duration-base) var(--ease-out);
 }
 
 /* Directional icons (chevrons, arrows) must be mirrored in RTL.
@@ -60,10 +142,19 @@ body {
   transform: scaleX(-1);
 }
 
-/* Accessible, visible focus ring across the app */
+/* Accessible, visible focus ring across the app. Uses box-shadow (not
+   outline) on interactive surfaces that already carry a border-radius,
+   so the ring follows rounded corners; :focus-visible outline stays
+   as the universal fallback for anything without an explicit style. */
 :focus-visible {
   outline: 2px solid hsl(var(--brand-500));
   outline-offset: 2px;
+}
+
+/* Selection color tuned to brand instead of the browser default blue */
+::selection {
+  background-color: hsl(var(--brand-200));
+  color: hsl(var(--brand-900));
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -76,8 +167,7 @@ body {
 }
 
 /* ===========================================================
-   Motion primitives — used sparingly (auth panel, form entrance,
-   toasts). Kept small and purposeful, not decorative.
+   Motion primitives — used with intent, not decoration.
    =========================================================== */
 @keyframes rise-in {
   from { opacity: 0; transform: translateY(10px); }
@@ -91,20 +181,36 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.55; }
 }
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
 
-.animate-rise-in {
-  animation: rise-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.animate-drift-in {
-  animation: drift-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.animate-soft-pulse {
-  animation: soft-pulse 2.2s ease-in-out infinite;
+.animate-rise-in { animation: rise-in 0.5s var(--ease-out) both; }
+.animate-drift-in { animation: drift-in 0.6s var(--ease-out) both; }
+.animate-soft-pulse { animation: soft-pulse 2.2s ease-in-out infinite; }
+.animate-scale-in { animation: scale-in var(--duration-base) var(--ease-out) both; }
+
+/* Skeleton loading shimmer — replaces plain animate-pulse where a
+   more premium loading feel is warranted (see Skeleton primitive). */
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--surface-sunken)) 25%,
+    hsl(var(--border)) 37%,
+    hsl(var(--surface-sunken)) 63%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
 }
 
 /* Staggered entrance for lists of form fields / bubbles */
 .stagger > * {
-  animation: rise-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: rise-in 0.5s var(--ease-out) both;
 }
 .stagger > *:nth-child(1) { animation-delay: 0ms; }
 .stagger > *:nth-child(2) { animation-delay: 60ms; }

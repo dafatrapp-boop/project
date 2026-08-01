@@ -33,7 +33,10 @@ export default async function DashboardLayout({
   if (!membership) redirect('/onboarding/workspace');
 
   const [{ data: workspace }, { data: appointmentSettings }] = await Promise.all([
-    supabase.from('workspaces').select('industry, onboarding_dismissed_at').eq('id', membership.workspace_id).single(),
+    // Phase 3: added `name` to this existing select (purely additive
+    // column, same query shape otherwise) so the sidebar can show which
+    // workspace the user is in instead of just the product logo.
+    supabase.from('workspaces').select('name, industry, onboarding_dismissed_at').eq('id', membership.workspace_id).single(),
     supabase.from('appointment_settings').select('enabled').eq('workspace_id', membership.workspace_id).maybeSingle(),
   ]);
 
@@ -51,11 +54,11 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar showAppointments={showAppointments} showOrders={showOrders} />
+      <Sidebar showAppointments={showAppointments} showOrders={showOrders} workspaceName={workspace?.name ?? ''} />
       <div className="flex-1 pb-16 md:pb-0">
         {onboardingProgress !== null && <OnboardingBanner progress={onboardingProgress} />}
         <Header workspaceId={membership.workspace_id} />
-        <main className="mx-auto max-w-6xl px-4 py-6 md:px-8">{children}</main>
+        <main className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8">{children}</main>
       </div>
       <MobileNav />
     </div>

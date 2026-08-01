@@ -9,12 +9,19 @@ interface Tab {
   content: ReactNode;
 }
 
+/**
+ * Phase 2: restyled as a segmented control (pill background sliding
+ * behind the active tab) instead of a bottom-border underline — reads
+ * as more "premium SaaS" and is more legible against the new elevated
+ * card tier. API unchanged (tabs, defaultTab), so every existing call
+ * site (currently: landing page editor) picks this up automatically.
+ */
 export function Tabs({ tabs, defaultTab }: { tabs: Tab[]; defaultTab?: string }) {
   const [active, setActive] = useState(defaultTab ?? tabs[0]?.id);
 
   return (
     <div>
-      <div role="tablist" className="flex gap-1 border-b border-border">
+      <div role="tablist" className="inline-flex gap-1 rounded-lg bg-surface-sunken p-1">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -22,17 +29,18 @@ export function Tabs({ tabs, defaultTab }: { tabs: Tab[]; defaultTab?: string })
             aria-selected={active === tab.id}
             onClick={() => setActive(tab.id)}
             className={cn(
-              'border-b-2 px-3 py-2 text-sm font-medium transition-colors',
+              'rounded-md px-3.5 py-1.5 text-body-sm font-medium transition-all duration-fast ease-out',
+              'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/20',
               active === tab.id
-                ? 'border-brand-500 text-ink'
-                : 'border-transparent text-ink-muted hover:text-ink'
+                ? 'bg-surface text-ink shadow-subtle'
+                : 'text-ink-muted hover:text-ink'
             )}
           >
             {tab.label}
           </button>
         ))}
       </div>
-      <div className="pt-4">{tabs.find((t) => t.id === active)?.content}</div>
+      <div className="pt-5">{tabs.find((t) => t.id === active)?.content}</div>
     </div>
   );
 }

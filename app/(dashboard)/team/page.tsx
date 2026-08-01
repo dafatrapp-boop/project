@@ -8,6 +8,7 @@ import { CancelInvitationButton } from './cancel-invitation-button';
 import { PlanTestingSelector } from './plan-testing-selector';
 import { UpgradeButtons } from './upgrade-buttons';
 import { isStripeConfigured } from '@/lib/stripe/client';
+import { WorkspaceTabs } from '@/components/layout/workspace-tabs';
 
 const ERROR_MESSAGES: Record<string, string> = {
   not_authorized: 'يلزم أن تكون مالكًا أو مشرفًا للقيام بهذا الإجراء.',
@@ -63,6 +64,7 @@ export default async function TeamPage({
 
   return (
     <div className="flex flex-col gap-6">
+      <WorkspaceTabs />
       <div>
         <h1 className="text-xl font-semibold text-ink">الفريق والباقة</h1>
         <p className="text-sm text-ink-muted">إدارة أعضاء الفريق وصلاحياتهم، ومتابعة حدود باقتك.</p>

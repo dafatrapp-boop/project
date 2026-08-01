@@ -2,7 +2,13 @@ import { createClient } from '@/lib/supabase/server';
 import { hasFeature, type Plan } from '@/lib/plans/constants';
 import { GlobalSearch } from './global-search';
 import { NotificationBell } from './notification-bell';
+import { Breadcrumbs } from './breadcrumbs';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
+// Phase 3: same data-fetching as before (plan lookup, plan-expiry RPC,
+// notification query) — only the JSX layout below changed, adding a
+// breadcrumb trail on the start side and a theme toggle on the end
+// side next to search/notifications.
 export async function Header({ workspaceId }: { workspaceId: string }) {
   const supabase = createClient();
 
@@ -31,9 +37,13 @@ export async function Header({ workspaceId }: { workspaceId: string }) {
     : { data: [] };
 
   return (
-    <header className="flex h-14 items-center justify-between gap-4 border-b border-border bg-surface px-4 md:px-8">
-      {showSearch ? <GlobalSearch /> : <span />}
-      {showNotifications && <NotificationBell notifications={notifications ?? []} />}
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b border-border bg-surface/95 px-4 backdrop-blur-sm md:px-8">
+      <Breadcrumbs />
+      <div className="flex flex-1 items-center justify-end gap-1.5">
+        {showSearch && <GlobalSearch />}
+        <ThemeToggle />
+        {showNotifications && <NotificationBell notifications={notifications ?? []} />}
+      </div>
     </header>
   );
 }
