@@ -40,11 +40,14 @@ export async function createAppointmentAction(formData: FormData) {
 export async function updateAppointmentStatusAction(appointmentId: string, status: AppointmentStatus) {
   const { supabase, workspaceId } = await requireWorkspace();
 
-  await supabase
+  const { error } = await supabase
     .from('appointments')
     .update({ status })
     .eq('id', appointmentId)
     .eq('workspace_id', workspaceId);
+  if (error) {
+    console.error('[appointments] update/delete failed:', error);
+  }
 
   revalidatePath('/appointments');
 }

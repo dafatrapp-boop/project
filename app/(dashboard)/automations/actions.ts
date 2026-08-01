@@ -15,18 +15,24 @@ export async function upsertAutomationRuleAction(
   if (role !== 'owner' && role !== 'admin') return;
 
   if (existingId) {
-    await supabase
+    const { error } = await supabase
       .from('automation_rules')
       .update({ config })
       .eq('id', existingId)
       .eq('workspace_id', workspaceId);
+    if (error) {
+      console.error('[automation_rules] update/delete failed:', error);
+    }
   } else {
-    await supabase.from('automation_rules').insert({
+    const { error } = await supabase.from('automation_rules').insert({
       workspace_id: workspaceId,
       rule_type: ruleType,
       config,
       enabled,
     });
+    if (error) {
+      console.error('[automation_rules] update/delete failed:', error);
+    }
   }
 
   revalidatePath('/automations');
@@ -37,11 +43,14 @@ export async function toggleAutomationRuleAction(ruleId: string, enabled: boolea
 
   if (role !== 'owner' && role !== 'admin') return;
 
-  await supabase
+  const { error } = await supabase
     .from('automation_rules')
     .update({ enabled })
     .eq('id', ruleId)
     .eq('workspace_id', workspaceId);
+  if (error) {
+    console.error('[automation_rules] update/delete failed:', error);
+  }
 
   revalidatePath('/automations');
 }
@@ -51,7 +60,10 @@ export async function deleteAutomationRuleAction(ruleId: string) {
 
   if (role !== 'owner' && role !== 'admin') return;
 
-  await supabase.from('automation_rules').delete().eq('id', ruleId).eq('workspace_id', workspaceId);
+  const { error } = await supabase.from('automation_rules').delete().eq('id', ruleId).eq('workspace_id', workspaceId);
+  if (error) {
+    console.error('[automation_rules] update/delete failed:', error);
+  }
 
   revalidatePath('/automations');
 }
@@ -61,5 +73,8 @@ export async function deleteAutomationRuleAction(ruleId: string) {
  * plain RPC call rather than a real background job. */
 export async function runAutomationsAction(workspaceId: string) {
   const { supabase } = await requireWorkspace();
-  await supabase.rpc('run_workspace_automations', { p_workspace_id: workspaceId });
+  const { error } = await supabase.rpc('run_workspace_automations', { p_workspace_id: workspaceId });
+  if (error) {
+    console.error('[run_workspace_automations] rpc failed:', error);
+  }
 }

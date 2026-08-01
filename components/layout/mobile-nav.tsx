@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Megaphone, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Users, Megaphone, BarChart3, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const ITEMS = [
@@ -10,6 +10,12 @@ const ITEMS = [
   { href: '/leads', label: 'العملاء', icon: Users },
   { href: '/campaigns', label: 'الحملات', icon: Megaphone },
   { href: '/analytics', label: 'التحليلات', icon: BarChart3 },
+  // Everything else that lives in the desktop sidebar (landing pages,
+  // team/plan & billing, appointments, orders, testimonials,
+  // automations, activity log, settings) has no other entry point on
+  // mobile — without this tab those pages are simply unreachable on
+  // a phone. See /more.
+  { href: '/more', label: 'المزيد', icon: MoreHorizontal },
 ];
 
 /**

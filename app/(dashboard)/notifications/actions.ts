@@ -10,11 +10,14 @@ export async function markNotificationReadAction(notificationId: string) {
   } = await supabase.auth.getUser();
   if (!user) return;
 
-  await supabase
+  const { error } = await supabase
     .from('notifications')
     .update({ read_at: new Date().toISOString() })
     .eq('id', notificationId)
     .eq('user_id', user.id);
+  if (error) {
+    console.error('[notifications] update/delete failed:', error);
+  }
 
   revalidatePath('/', 'layout');
 }
@@ -26,11 +29,14 @@ export async function markAllNotificationsReadAction() {
   } = await supabase.auth.getUser();
   if (!user) return;
 
-  await supabase
+  const { error } = await supabase
     .from('notifications')
     .update({ read_at: new Date().toISOString() })
     .eq('user_id', user.id)
     .is('read_at', null);
+  if (error) {
+    console.error('[notifications] update/delete failed:', error);
+  }
 
   revalidatePath('/', 'layout');
 }

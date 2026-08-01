@@ -16,18 +16,12 @@ export async function requireWorkspace() {
 
   if (!user) redirect('/login');
 
-  const { data: membership, error: membershipError } = await supabase
-  .from('workspace_members')
-  .select('workspace_id, role')
-  .eq('user_id', user.id)
-  .limit(1)
-  .maybeSingle();
-
-console.log('WORKSPACE CHECK:', {
-  userId: user.id,
-  membership,
-  membershipError,
-});
+  const { data: membership } = await supabase
+    .from('workspace_members')
+    .select('workspace_id, role')
+    .eq('user_id', user.id)
+    .limit(1)
+    .maybeSingle();
 
   if (!membership) redirect('/onboarding/workspace');
 

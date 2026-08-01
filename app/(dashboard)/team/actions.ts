@@ -51,6 +51,7 @@ export async function inviteMemberAction(formData: FormData) {
   });
 
   if (error) {
+    console.error('[team.invite] insert workspace_invitations failed:', error);
     redirect('/team?error=invite_failed');
   }
 
@@ -61,11 +62,14 @@ export async function inviteMemberAction(formData: FormData) {
 export async function cancelInvitationAction(invitationId: string) {
   const { supabase, workspaceId } = await requireWorkspace();
 
-  await supabase
+  const { error } = await supabase
     .from('workspace_invitations')
     .delete()
     .eq('id', invitationId)
     .eq('workspace_id', workspaceId);
+  if (error) {
+    console.error('[workspace_invitations] update/delete failed:', error);
+  }
 
   revalidatePath('/team');
 }
@@ -100,11 +104,14 @@ export async function updateMemberRoleAction(memberUserId: string, newRole: Memb
     redirect('/team?error=cannot_change_owner_role');
   }
 
-  await supabase
+  const { error } = await supabase
     .from('workspace_members')
     .update({ role: newRole })
     .eq('workspace_id', workspaceId)
     .eq('user_id', memberUserId);
+  if (error) {
+    console.error('[workspace_members] update/delete failed:', error);
+  }
 
   revalidatePath('/team');
 }
@@ -131,11 +138,14 @@ export async function removeMemberAction(memberUserId: string) {
     redirect('/team?error=cannot_remove_owner');
   }
 
-  await supabase
+  const { error } = await supabase
     .from('workspace_members')
     .delete()
     .eq('workspace_id', workspaceId)
     .eq('user_id', memberUserId);
+  if (error) {
+    console.error('[workspace_members] update/delete failed:', error);
+  }
 
   revalidatePath('/team');
 }
@@ -153,6 +163,9 @@ export async function setPlanForTestingAction(plan: Plan) {
     redirect('/team?error=not_authorized');
   }
 
-  await supabase.from('workspaces').update({ plan }).eq('id', workspaceId);
+  const { error } = await supabase.from('workspaces').update({ plan }).eq('id', workspaceId);
+  if (error) {
+    console.error('[workspaces] update/delete failed:', error);
+  }
   revalidatePath('/team');
 }

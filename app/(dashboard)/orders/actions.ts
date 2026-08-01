@@ -34,6 +34,7 @@ export async function createOrderAction(formData: FormData) {
   });
 
   if (error) {
+    console.error('[orders.create] insert failed:', error);
     redirect('/orders?error=create_failed');
   }
 
@@ -45,11 +46,14 @@ export async function createOrderAction(formData: FormData) {
 export async function updateOrderStatusAction(orderId: string, status: OrderStatus) {
   const { supabase, workspaceId } = await requireWorkspace();
 
-  await supabase
+  const { error } = await supabase
     .from('orders')
     .update({ status })
     .eq('id', orderId)
     .eq('workspace_id', workspaceId);
+  if (error) {
+    console.error('[orders] update/delete failed:', error);
+  }
 
   revalidatePath('/orders');
   revalidatePath('/dashboard');
@@ -60,7 +64,10 @@ export async function deleteOrderAction(orderId: string) {
 
   if (role !== 'owner' && role !== 'admin') return;
 
-  await supabase.from('orders').delete().eq('id', orderId).eq('workspace_id', workspaceId);
+  const { error } = await supabase.from('orders').delete().eq('id', orderId).eq('workspace_id', workspaceId);
+  if (error) {
+    console.error('[orders] update/delete failed:', error);
+  }
 
   revalidatePath('/orders');
   revalidatePath('/dashboard');

@@ -42,13 +42,16 @@ export async function createLeadAction(formData: FormData) {
 export async function updateLeadStatusAction(leadId: string, status: LeadStatus) {
   const { supabase, workspaceId } = await requireWorkspace();
 
-  await supabase
+  const { error } = await supabase
     .from('leads')
     .update({ status })
     .eq('id', leadId)
     .eq('workspace_id', workspaceId); // RLS also enforces this, kept explicit for clarity
 
   revalidatePath(`/leads/${leadId}`);
+  if (error) {
+    console.error('[leads] update/delete failed:', error);
+  }
   revalidatePath('/leads');
 }
 
@@ -58,12 +61,15 @@ export async function addNoteAction(leadId: string, formData: FormData) {
   const body = String(formData.get('body') ?? '').trim();
   if (!body) return;
 
-  await supabase.from('lead_notes').insert({
+  const { error } = await supabase.from('lead_notes').insert({
     lead_id: leadId,
     workspace_id: workspaceId,
     author_id: user.id,
     body,
   });
+  if (error) {
+    console.error('[lead_notes] update/delete failed:', error);
+  }
 
   revalidatePath(`/leads/${leadId}`);
 }
@@ -75,7 +81,7 @@ export async function createFollowUpAction(leadId: string, formData: FormData) {
   const note = String(formData.get('note') ?? '').trim() || null;
   if (!dueAt) return;
 
-    await supabase.from('lead_follow_ups').insert({
+    const { error } = await supabase.from('lead_follow_ups').insert({
     lead_id: leadId,
     workspace_id: workspaceId,
     due_at: new Date(dueAt).toISOString(),
@@ -83,6 +89,9 @@ export async function createFollowUpAction(leadId: string, formData: FormData) {
     assigned_to: null,
     completed_at: null,
   });
+    if (error) {
+      console.error('[lead_follow_ups] update/delete failed:', error);
+    }
 
 
   revalidatePath(`/leads/${leadId}`);
@@ -91,13 +100,16 @@ export async function createFollowUpAction(leadId: string, formData: FormData) {
 export async function completeFollowUpAction(followUpId: string, leadId: string) {
   const { supabase, workspaceId } = await requireWorkspace();
 
-  await supabase
+  const { error } = await supabase
     .from('lead_follow_ups')
     .update({ completed_at: new Date().toISOString() })
     .eq('id', followUpId)
     .eq('workspace_id', workspaceId); // RLS also enforces this; kept explicit for consistency
 
   revalidatePath(`/leads/${leadId}`);
+  if (error) {
+    console.error('[lead_follow_ups] update/delete failed:', error);
+  }
 }
 
 export async function updateLeadTagsAction(leadId: string, tags: string[]) {
@@ -107,11 +119,14 @@ export async function updateLeadTagsAction(leadId: string, tags: string[]) {
 
   const cleaned = Array.from(new Set(tags.map((t) => t.trim()).filter(Boolean))).slice(0, 10);
 
-  await supabase
+  const { error } = await supabase
     .from('leads')
     .update({ tags: cleaned })
     .eq('id', leadId)
     .eq('workspace_id', workspaceId);
+  if (error) {
+    console.error('[leads] update/delete failed:', error);
+  }
 
   revalidatePath(`/leads/${leadId}`);
   revalidatePath('/leads');
@@ -124,7 +139,10 @@ export async function deleteLeadAction(leadId: string) {
     redirect('/leads?error=not_authorized');
   }
 
-  await supabase.from('leads').delete().eq('id', leadId).eq('workspace_id', workspaceId);
+  const { error } = await supabase.from('leads').delete().eq('id', leadId).eq('workspace_id', workspaceId);
+  if (error) {
+    console.error('[leads] update/delete failed:', error);
+  }
 
   revalidatePath('/leads');
   redirect('/leads');

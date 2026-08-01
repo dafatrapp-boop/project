@@ -45,6 +45,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/leads') ||
     pathname.startsWith('/landing-pages') ||
     pathname.startsWith('/campaigns') ||
+    pathname.startsWith('/more') ||
     pathname.startsWith('/analytics') ||
     pathname.startsWith('/team') ||
     pathname.startsWith('/activity') ||

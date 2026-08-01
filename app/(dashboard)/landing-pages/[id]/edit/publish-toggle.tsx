@@ -15,7 +15,11 @@ export function PublishToggle({ pageId, isPublished }: { pageId: string; isPubli
       disabled={pending}
       onClick={() =>
         startTransition(async () => {
-          await togglePublishAction(pageId, !isPublished);
+          const result = await togglePublishAction(pageId, !isPublished);
+          if (!result.ok) {
+            show(result.error ?? 'حدث خطأ غير متوقع.', 'error');
+            return;
+          }
           show(isPublished ? 'تم إلغاء نشر الصفحة' : 'تم نشر الصفحة بنجاح', 'success');
         })
       }

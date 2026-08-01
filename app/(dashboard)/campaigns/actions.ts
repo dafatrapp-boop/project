@@ -69,11 +69,14 @@ export async function createCampaignAction(formData: FormData) {
 export async function updateCampaignStatusAction(campaignId: string, status: CampaignStatus) {
   const { supabase, workspaceId } = await requireWorkspace();
 
-  await supabase
+  const { error } = await supabase
     .from('campaigns')
     .update({ status })
     .eq('id', campaignId)
     .eq('workspace_id', workspaceId);
+  if (error) {
+    console.error('[campaigns] update/delete failed:', error);
+  }
 
   revalidatePath('/campaigns');
   revalidatePath(`/campaigns/${campaignId}`);
@@ -82,7 +85,10 @@ export async function updateCampaignStatusAction(campaignId: string, status: Cam
 export async function deleteCampaignAction(campaignId: string) {
   const { supabase, workspaceId } = await requireWorkspace();
 
-  await supabase.from('campaigns').delete().eq('id', campaignId).eq('workspace_id', workspaceId);
+  const { error } = await supabase.from('campaigns').delete().eq('id', campaignId).eq('workspace_id', workspaceId);
+  if (error) {
+    console.error('[campaigns] update/delete failed:', error);
+  }
 
   revalidatePath('/campaigns');
   redirect('/campaigns');

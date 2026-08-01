@@ -20,10 +20,13 @@ export async function updateMetaPixelAction(formData: FormData) {
     redirect('/settings?error=invalid_pixel_id');
   }
 
-  await supabase
+  const { error } = await supabase
     .from('workspaces')
     .update({ meta_pixel_id: raw || null })
     .eq('id', workspaceId);
+  if (error) {
+    console.error('[workspaces] update/delete failed:', error);
+  }
 
   revalidatePath('/settings');
   redirect('/settings?success=1');
@@ -55,7 +58,7 @@ export async function updateAppointmentSettingsAction(formData: FormData) {
     redirect('/settings?error=missing_working_days');
   }
 
-  await supabase
+  const { error } = await supabase
     .from('appointment_settings')
     .update({
       enabled,
@@ -67,6 +70,9 @@ export async function updateAppointmentSettingsAction(formData: FormData) {
       holidays,
     })
     .eq('workspace_id', workspaceId);
+  if (error) {
+    console.error('[appointment_settings] update/delete failed:', error);
+  }
 
   revalidatePath('/settings');
   redirect('/settings?success=appointments');
@@ -77,7 +83,10 @@ export async function updateAppointmentSettingsAction(formData: FormData) {
 export async function resetGuidesAction() {
   const { supabase, user } = await requireWorkspace();
 
-  await supabase.from('user_guide_state').delete().eq('user_id', user.id);
+  const { error } = await supabase.from('user_guide_state').delete().eq('user_id', user.id);
+  if (error) {
+    console.error('[user_guide_state] update/delete failed:', error);
+  }
 
   revalidatePath('/settings');
   redirect('/settings?success=guides_reset');

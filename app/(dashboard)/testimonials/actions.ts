@@ -37,11 +37,14 @@ export async function createTestimonialAction(formData: FormData) {
 export async function toggleTestimonialVisibilityAction(testimonialId: string, isVisible: boolean) {
   const { supabase, workspaceId } = await requireWorkspace();
 
-  await supabase
+  const { error } = await supabase
     .from('testimonials')
     .update({ is_visible: isVisible })
     .eq('id', testimonialId)
     .eq('workspace_id', workspaceId);
+  if (error) {
+    console.error('[testimonials] update/delete failed:', error);
+  }
 
   revalidatePath('/testimonials');
 }
@@ -49,7 +52,10 @@ export async function toggleTestimonialVisibilityAction(testimonialId: string, i
 export async function deleteTestimonialAction(testimonialId: string) {
   const { supabase, workspaceId } = await requireWorkspace();
 
-  await supabase.from('testimonials').delete().eq('id', testimonialId).eq('workspace_id', workspaceId);
+  const { error } = await supabase.from('testimonials').delete().eq('id', testimonialId).eq('workspace_id', workspaceId);
+  if (error) {
+    console.error('[testimonials] update/delete failed:', error);
+  }
 
   revalidatePath('/testimonials');
 }

@@ -69,11 +69,14 @@ export async function createLandingPageAction(formData: FormData) {
 export async function updateSectionsAction(pageId: string, sections: Section[]) {
   const { supabase, workspaceId } = await requireWorkspace();
 
-  await supabase
+  const { error } = await supabase
     .from('landing_pages')
     .update({ sections })
     .eq('id', pageId)
     .eq('workspace_id', workspaceId);
+  if (error) {
+    console.error('[landing_pages] update/delete failed:', error);
+  }
 
   revalidatePath(`/landing-pages/${pageId}/edit`);
 }
@@ -88,7 +91,7 @@ export async function updatePageMetaAction(pageId: string, formData: FormData) {
 
   if (!title) return;
 
-  await supabase
+  const { error } = await supabase
     .from('landing_pages')
     .update({
       title,
@@ -98,30 +101,56 @@ export async function updatePageMetaAction(pageId: string, formData: FormData) {
     })
     .eq('id', pageId)
     .eq('workspace_id', workspaceId);
+  if (error) {
+    console.error('[landing_pages] update/delete failed:', error);
+  }
 
   revalidatePath(`/landing-pages/${pageId}/edit`);
 }
 
-export async function togglePublishAction(pageId: string, publish: boolean) {
+export async function togglePublishAction(
+  pageId: string,
+  publish: boolean
+): Promise<{ ok: boolean; error?: string }> {
   const { supabase, workspaceId } = await requireWorkspace();
 
-  await supabase
+  const { data, error } = await supabase
     .from('landing_pages')
     .update({
       status: publish ? 'published' : 'draft',
       published_at: publish ? new Date().toISOString() : null,
     })
     .eq('id', pageId)
-    .eq('workspace_id', workspaceId);
+    .eq('workspace_id', workspaceId)
+    .select('id')
+    .maybeSingle();
 
   revalidatePath(`/landing-pages/${pageId}/edit`);
   revalidatePath('/landing-pages');
+
+  // A silent no-op update (0 rows affected, no thrown error) almost
+  // always means Row Level Security blocked the write rather than an
+  // actual query failure — surface that distinctly so it isn't
+  // reported to the user as a generic success.
+  if (error) {
+    return { ok: false, error: 'تعذر تحديث حالة النشر. تحقق من صلاحياتك على المساحة.' };
+  }
+  if (!data) {
+    return {
+      ok: false,
+      error: 'لم يتم حفظ التغيير — على الأغلب بسبب سياسات RLS بقاعدة البيانات تمنع هذا التحديث.',
+    };
+  }
+  return { ok: true };
 }
 
 export async function deleteLandingPageAction(pageId: string) {
   const { supabase, workspaceId } = await requireWorkspace();
 
-  await supabase.from('landing_pages').delete().eq('id', pageId).eq('workspace_id', workspaceId);
+  const { error } = await supabase.from('landing_pages').delete().eq('id', pageId).eq('workspace_id', workspaceId);
+  if (error) {
+    console.error('[landing_pages] update/delete failed:', error);
+  }
 
   revalidatePath('/landing-pages');
   redirect('/landing-pages');

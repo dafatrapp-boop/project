@@ -60,6 +60,7 @@ export async function submitLeadFormAction(
   });
 
   if (error || !leadId) {
+    console.error('[submit_lead_from_landing_page] failed:', error);
     return { ok: false, error: 'submit_failed' };
   }
 
@@ -117,6 +118,7 @@ export async function bookAppointmentAction(
   });
 
   if (error || !appointmentId) {
+    console.error('[book_appointment_slot] failed:', error);
     const message = error?.message ?? '';
     if (message.includes('slot_full')) return { ok: false, error: 'slot_full' };
     if (message.includes('holiday') || message.includes('non_working_day') || message.includes('outside_working_hours')) {
