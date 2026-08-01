@@ -2,15 +2,39 @@
 -- SocialSales OS — Phase 8: Team + Plans
 -- =====================================================================
 
-create type public.workspace_plan as enum ('free', 'starter', 'pro');
+do $$ begin
+  create type public.workspace_plan as enum ('free', 'starter', 'pro');
+exception when duplicate_object then null;
+end $$;
 
-alter table public.workspaces
+do $$ begin
+  alter table public.workspaces
   add column plan public.workspace_plan not null default 'free';
+exception when duplicate_column then null;
+end $$;
+
+-- Type-fix safety net (same reasoning as `industry` in
+-- 0001_foundation.sql): if `plan` already existed as plain text, the
+-- DO block above just skips it via duplicate_column — convert it to
+-- the enum type explicitly here. This is exactly the error you hit.
+do $$ begin
+  if (select data_type from information_schema.columns
+      where table_schema = 'public' and table_name = 'workspaces' and column_name = 'plan') = 'text' then
+    alter table public.workspaces alter column plan drop default;
+    alter table public.workspaces
+      alter column plan type public.workspace_plan using plan::public.workspace_plan;
+    alter table public.workspaces alter column plan set default 'free'::public.workspace_plan;
+    alter table public.workspaces alter column plan set not null;
+  end if;
+exception when others then
+  raise notice 'Skipped plan type conversion: %', sqlerrm;
+end $$;
 
 -- The Phase 1 `profiles` table only let a user read their OWN profile
 -- row. The team page needs to display co-workers' names, which that
 -- policy would silently block (empty name, not an error) — add the
 -- policy Phase 1 was missing rather than working around it in the app.
+drop policy if exists "profiles_select_workspace_coworkers" on public.profiles;
 create policy "profiles_select_workspace_coworkers"
   on public.profiles for select
   using (
@@ -28,7 +52,7 @@ create policy "profiles_select_workspace_coworkers"
 -- automated email send — a real, working mechanism, just not the
 -- fully-automated one a configured email provider would allow.
 -- ---------------------------------------------------------------------
-create table public.workspace_invitations (
+create table if not exists public.workspace_invitations (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   email text not null,
@@ -41,7 +65,7 @@ create table public.workspace_invitations (
   unique (token)
 );
 
-create index workspace_invitations_workspace_idx on public.workspace_invitations (workspace_id);
+create index if not exists workspace_invitations_workspace_idx on public.workspace_invitations (workspace_id);
 
 alter table public.workspace_invitations enable row level security;
 
@@ -50,14 +74,17 @@ alter table public.workspace_invitations enable row level security;
 -- an invitee looks up their invite through the narrow function below,
 -- not by querying this table, so a token can't be brute-forced via
 -- table scanning even under RLS.
+drop policy if exists "invitations_select_admin" on public.workspace_invitations;
 create policy "invitations_select_admin"
   on public.workspace_invitations for select
   using (public.is_workspace_admin(workspace_id));
 
+drop policy if exists "invitations_insert_admin" on public.workspace_invitations;
 create policy "invitations_insert_admin"
   on public.workspace_invitations for insert
   with check (public.is_workspace_admin(workspace_id));
 
+drop policy if exists "invitations_delete_admin" on public.workspace_invitations;
 create policy "invitations_delete_admin"
   on public.workspace_invitations for delete
   using (public.is_workspace_admin(workspace_id));

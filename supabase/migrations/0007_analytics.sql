@@ -6,7 +6,7 @@
 -- querying user, not to the view's owner — same reasoning as
 -- campaign_stats in 0005_campaigns.sql.
 
-create view public.leads_daily_counts
+create or replace view public.leads_daily_counts
 with (security_invoker = true)
 as
 select
@@ -17,7 +17,7 @@ select
 from public.leads
 group by workspace_id, date_trunc('day', created_at)::date;
 
-create view public.page_views_daily_counts
+create or replace view public.page_views_daily_counts
 with (security_invoker = true)
 as
 select

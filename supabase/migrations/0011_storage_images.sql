@@ -26,6 +26,7 @@ on conflict (id) do update set
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 
+drop policy if exists "landing_images_select_member" on storage.objects;
 create policy "landing_images_select_member"
   on storage.objects for select
   to authenticated
@@ -34,6 +35,7 @@ create policy "landing_images_select_member"
     and public.is_workspace_member((storage.foldername(name))[1]::uuid)
   );
 
+drop policy if exists "landing_images_insert_member" on storage.objects;
 create policy "landing_images_insert_member"
   on storage.objects for insert
   to authenticated
@@ -42,6 +44,7 @@ create policy "landing_images_insert_member"
     and public.is_workspace_member((storage.foldername(name))[1]::uuid)
   );
 
+drop policy if exists "landing_images_update_member" on storage.objects;
 create policy "landing_images_update_member"
   on storage.objects for update
   to authenticated
@@ -50,6 +53,7 @@ create policy "landing_images_update_member"
     and public.is_workspace_member((storage.foldername(name))[1]::uuid)
   );
 
+drop policy if exists "landing_images_delete_member" on storage.objects;
 create policy "landing_images_delete_member"
   on storage.objects for delete
   to authenticated

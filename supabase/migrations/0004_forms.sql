@@ -75,14 +75,14 @@ grant execute on function public.submit_lead_from_landing_page to anon, authenti
 -- Simple rate limiting: cap submissions per landing page per hour to
 -- blunt basic scripted abuse. Real bot protection (captcha/turnstile)
 -- is a Phase 9 polish item, not built here — see CHECKLIST.md.
-create table public.form_submission_log (
+create table if not exists public.form_submission_log (
   id uuid primary key default gen_random_uuid(),
   landing_page_id uuid not null references public.landing_pages(id) on delete cascade,
   ip_hash text not null,
   created_at timestamptz not null default now()
 );
 
-create index form_submission_log_rate_idx
+create index if not exists form_submission_log_rate_idx
   on public.form_submission_log (landing_page_id, ip_hash, created_at);
 
 alter table public.form_submission_log enable row level security;

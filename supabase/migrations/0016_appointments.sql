@@ -19,7 +19,7 @@ alter type public.workspace_industry add value if not exists 'consultant';
 -- table would be overkill for "a merchant blocks a handful of days a
 -- year".
 -- ---------------------------------------------------------------------
-create table public.appointment_settings (
+create table if not exists public.appointment_settings (
   workspace_id uuid primary key references public.workspaces(id) on delete cascade,
   enabled boolean not null default false,
   -- 0 = Sunday .. 6 = Saturday. Default matches the typical Sun-Thu week.
@@ -34,10 +34,12 @@ create table public.appointment_settings (
 
 alter table public.appointment_settings enable row level security;
 
+drop policy if exists "appointment_settings_select_member" on public.appointment_settings;
 create policy "appointment_settings_select_member"
   on public.appointment_settings for select
   using (public.is_workspace_member(workspace_id));
 
+drop policy if exists "appointment_settings_update_admin" on public.appointment_settings;
 create policy "appointment_settings_update_admin"
   on public.appointment_settings for update
   using (public.is_workspace_admin(workspace_id));
@@ -50,7 +52,7 @@ create or replace function public.industry_defaults_to_appointments(p_industry p
 returns boolean
 language sql immutable
 as $$
-  select p_industry in ('clinic', 'training_center', 'beauty_salon', 'lawyer', 'consultant');
+  select p_industry::text in ('clinic', 'training_center', 'beauty_salon', 'lawyer', 'consultant');
 $$;
 
 create or replace function public.create_appointment_settings_for_workspace()
@@ -64,6 +66,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_workspace_created_appointment_settings on public.workspaces;
 create trigger on_workspace_created_appointment_settings
   after insert on public.workspaces
   for each row execute procedure public.create_appointment_settings_for_workspace();
@@ -71,9 +74,12 @@ create trigger on_workspace_created_appointment_settings
 -- ---------------------------------------------------------------------
 -- appointments
 -- ---------------------------------------------------------------------
-create type public.appointment_status as enum ('pending', 'confirmed', 'completed', 'cancelled');
+do $$ begin
+  create type public.appointment_status as enum ('pending', 'confirmed', 'completed', 'cancelled');
+exception when duplicate_object then null;
+end $$;
 
-create table public.appointments (
+create table if not exists public.appointments (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   customer_name text not null,
@@ -86,23 +92,27 @@ create table public.appointments (
   created_at timestamptz not null default now()
 );
 
-create index appointments_workspace_date_idx
+create index if not exists appointments_workspace_date_idx
   on public.appointments (workspace_id, appointment_date, start_time);
 
 alter table public.appointments enable row level security;
 
+drop policy if exists "appointments_select_member" on public.appointments;
 create policy "appointments_select_member"
   on public.appointments for select
   using (public.is_workspace_member(workspace_id));
 
+drop policy if exists "appointments_insert_member" on public.appointments;
 create policy "appointments_insert_member"
   on public.appointments for insert
   with check (public.is_workspace_member(workspace_id));
 
+drop policy if exists "appointments_update_member" on public.appointments;
 create policy "appointments_update_member"
   on public.appointments for update
   using (public.is_workspace_member(workspace_id));
 
+drop policy if exists "appointments_delete_admin" on public.appointments;
 create policy "appointments_delete_admin"
   on public.appointments for delete
   using (public.is_workspace_admin(workspace_id));

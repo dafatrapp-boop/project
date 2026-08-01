@@ -5,7 +5,7 @@
 -- ---------------------------------------------------------------------
 -- lead_notes: free-text notes an agent leaves on a lead.
 -- ---------------------------------------------------------------------
-create table public.lead_notes (
+create table if not exists public.lead_notes (
   id uuid primary key default gen_random_uuid(),
   lead_id uuid not null references public.leads(id) on delete cascade,
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -14,18 +14,21 @@ create table public.lead_notes (
   created_at timestamptz not null default now()
 );
 
-create index lead_notes_lead_idx on public.lead_notes (lead_id, created_at desc);
+create index if not exists lead_notes_lead_idx on public.lead_notes (lead_id, created_at desc);
 
 alter table public.lead_notes enable row level security;
 
+drop policy if exists "lead_notes_select_member" on public.lead_notes;
 create policy "lead_notes_select_member"
   on public.lead_notes for select
   using (public.is_workspace_member(workspace_id));
 
+drop policy if exists "lead_notes_insert_member" on public.lead_notes;
 create policy "lead_notes_insert_member"
   on public.lead_notes for insert
   with check (public.is_workspace_member(workspace_id) and author_id = auth.uid());
 
+drop policy if exists "lead_notes_delete_author_or_admin" on public.lead_notes;
 create policy "lead_notes_delete_author_or_admin"
   on public.lead_notes for delete
   using (author_id = auth.uid() or public.is_workspace_admin(workspace_id));
@@ -35,11 +38,14 @@ create policy "lead_notes_delete_author_or_admin"
 -- assignment changes, follow-up completions). Written by triggers,
 -- never directly by the client.
 -- ---------------------------------------------------------------------
-create type public.activity_type as enum (
+do $$ begin
+  create type public.activity_type as enum (
   'created', 'status_changed', 'assigned', 'note_added', 'follow_up_completed'
 );
+exception when duplicate_object then null;
+end $$;
 
-create table public.lead_activities (
+create table if not exists public.lead_activities (
   id uuid primary key default gen_random_uuid(),
   lead_id uuid not null references public.leads(id) on delete cascade,
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -49,10 +55,11 @@ create table public.lead_activities (
   created_at timestamptz not null default now()
 );
 
-create index lead_activities_lead_idx on public.lead_activities (lead_id, created_at desc);
+create index if not exists lead_activities_lead_idx on public.lead_activities (lead_id, created_at desc);
 
 alter table public.lead_activities enable row level security;
 
+drop policy if exists "lead_activities_select_member" on public.lead_activities;
 create policy "lead_activities_select_member"
   on public.lead_activities for select
   using (public.is_workspace_member(workspace_id));
@@ -63,7 +70,7 @@ create policy "lead_activities_select_member"
 -- ---------------------------------------------------------------------
 -- lead_follow_ups: scheduled follow-up tasks per lead.
 -- ---------------------------------------------------------------------
-create table public.lead_follow_ups (
+create table if not exists public.lead_follow_ups (
   id uuid primary key default gen_random_uuid(),
   lead_id uuid not null references public.leads(id) on delete cascade,
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -74,22 +81,26 @@ create table public.lead_follow_ups (
   created_at timestamptz not null default now()
 );
 
-create index lead_follow_ups_due_idx on public.lead_follow_ups (workspace_id, due_at) where completed_at is null;
+create index if not exists lead_follow_ups_due_idx on public.lead_follow_ups (workspace_id, due_at) where completed_at is null;
 
 alter table public.lead_follow_ups enable row level security;
 
+drop policy if exists "follow_ups_select_member" on public.lead_follow_ups;
 create policy "follow_ups_select_member"
   on public.lead_follow_ups for select
   using (public.is_workspace_member(workspace_id));
 
+drop policy if exists "follow_ups_insert_member" on public.lead_follow_ups;
 create policy "follow_ups_insert_member"
   on public.lead_follow_ups for insert
   with check (public.is_workspace_member(workspace_id));
 
+drop policy if exists "follow_ups_update_member" on public.lead_follow_ups;
 create policy "follow_ups_update_member"
   on public.lead_follow_ups for update
   using (public.is_workspace_member(workspace_id));
 
+drop policy if exists "follow_ups_delete_admin" on public.lead_follow_ups;
 create policy "follow_ups_delete_admin"
   on public.lead_follow_ups for delete
   using (public.is_workspace_admin(workspace_id));
@@ -97,7 +108,7 @@ create policy "follow_ups_delete_admin"
 -- ---------------------------------------------------------------------
 -- Triggers: auto-log activity on lead creation / status change / reassignment.
 -- ---------------------------------------------------------------------
-create function public.log_lead_created()
+create or replace function public.log_lead_created()
 returns trigger as $$
 begin
   insert into public.lead_activities (lead_id, workspace_id, actor_id, type, payload)
@@ -106,11 +117,12 @@ begin
 end;
 $$ language plpgsql security definer set search_path = public;
 
+drop trigger if exists on_lead_created on public.leads;
 create trigger on_lead_created
   after insert on public.leads
   for each row execute procedure public.log_lead_created();
 
-create function public.log_lead_status_change()
+create or replace function public.log_lead_status_change()
 returns trigger as $$
 begin
   if new.status is distinct from old.status then
@@ -129,11 +141,12 @@ begin
 end;
 $$ language plpgsql security definer set search_path = public;
 
+drop trigger if exists on_lead_updated_log on public.leads;
 create trigger on_lead_updated_log
   after update on public.leads
   for each row execute procedure public.log_lead_status_change();
 
-create function public.log_note_added()
+create or replace function public.log_note_added()
 returns trigger as $$
 begin
   insert into public.lead_activities (lead_id, workspace_id, actor_id, type, payload)
@@ -142,11 +155,12 @@ begin
 end;
 $$ language plpgsql security definer set search_path = public;
 
+drop trigger if exists on_note_added_log on public.lead_notes;
 create trigger on_note_added_log
   after insert on public.lead_notes
   for each row execute procedure public.log_note_added();
 
-create function public.log_follow_up_completed()
+create or replace function public.log_follow_up_completed()
 returns trigger as $$
 begin
   if new.completed_at is not null and old.completed_at is null then
@@ -157,6 +171,7 @@ begin
 end;
 $$ language plpgsql security definer set search_path = public;
 
+drop trigger if exists on_follow_up_completed_log on public.lead_follow_ups;
 create trigger on_follow_up_completed_log
   after update on public.lead_follow_ups
   for each row execute procedure public.log_follow_up_completed();
@@ -164,9 +179,12 @@ create trigger on_follow_up_completed_log
 -- ---------------------------------------------------------------------
 -- Full-text search over leads (name, phone, email) for the search box.
 -- ---------------------------------------------------------------------
-alter table public.leads add column search_vector tsvector
+do $$ begin
+  alter table public.leads add column search_vector tsvector
   generated always as (
     to_tsvector('simple', coalesce(full_name, '') || ' ' || coalesce(phone, '') || ' ' || coalesce(email, ''))
   ) stored;
+exception when duplicate_column then null;
+end $$;
 
-create index leads_search_idx on public.leads using gin (search_vector);
+create index if not exists leads_search_idx on public.leads using gin (search_vector);

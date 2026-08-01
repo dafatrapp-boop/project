@@ -10,14 +10,17 @@
 -- page load (see lib/automation and the leads/dashboard pages).
 -- =====================================================================
 
-create type public.automation_rule_type as enum (
+do $$ begin
+  create type public.automation_rule_type as enum (
   'lead_stale_reminder',   -- New lead untouched for N hours -> follow-up reminder
   'interested_followup',   -- Lead becomes Interested -> follow-up in N days
   'campaign_tag',          -- Lead came from campaign X -> auto-tag
   'inactivity_flag'        -- No activity for N days -> tag as needing attention
 );
+exception when duplicate_object then null;
+end $$;
 
-create table public.automation_rules (
+create table if not exists public.automation_rules (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   rule_type public.automation_rule_type not null,
@@ -28,26 +31,31 @@ create table public.automation_rules (
   updated_at timestamptz not null default now()
 );
 
-create index automation_rules_workspace_idx on public.automation_rules (workspace_id);
+create index if not exists automation_rules_workspace_idx on public.automation_rules (workspace_id);
 
 alter table public.automation_rules enable row level security;
 
+drop policy if exists "automation_rules_select_member" on public.automation_rules;
 create policy "automation_rules_select_member"
   on public.automation_rules for select
   using (public.is_workspace_member(workspace_id));
 
+drop policy if exists "automation_rules_insert_admin" on public.automation_rules;
 create policy "automation_rules_insert_admin"
   on public.automation_rules for insert
   with check (public.is_workspace_admin(workspace_id));
 
+drop policy if exists "automation_rules_update_admin" on public.automation_rules;
 create policy "automation_rules_update_admin"
   on public.automation_rules for update
   using (public.is_workspace_admin(workspace_id));
 
+drop policy if exists "automation_rules_delete_admin" on public.automation_rules;
 create policy "automation_rules_delete_admin"
   on public.automation_rules for delete
   using (public.is_workspace_admin(workspace_id));
 
+drop trigger if exists automation_rules_set_updated_at on public.automation_rules;
 create trigger automation_rules_set_updated_at
   before update on public.automation_rules
   for each row execute procedure public.set_updated_at();
@@ -57,7 +65,7 @@ create trigger automation_rules_set_updated_at
 -- so re-running run_workspace_automations on every page load never
 -- creates duplicate reminders for the same lead/rule.
 -- ---------------------------------------------------------------------
-create table public.automation_log (
+create table if not exists public.automation_log (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   lead_id uuid not null references public.leads(id) on delete cascade,
@@ -68,6 +76,7 @@ create table public.automation_log (
 
 alter table public.automation_log enable row level security;
 
+drop policy if exists "automation_log_select_member" on public.automation_log;
 create policy "automation_log_select_member"
   on public.automation_log for select
   using (public.is_workspace_member(workspace_id));
@@ -106,6 +115,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_lead_interested_followup on public.leads;
 create trigger on_lead_interested_followup
   after update on public.leads
   for each row execute procedure public.apply_interested_followup_rule();
@@ -137,6 +147,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_lead_created_campaign_tag on public.leads;
 create trigger on_lead_created_campaign_tag
   after insert on public.leads
   for each row execute procedure public.apply_campaign_tag_rule();

@@ -56,6 +56,7 @@ $$ language plpgsql security definer set search_path = public;
 -- regardless of which role or client performed it (including the
 -- service-role/admin client), because trigger execution is not
 -- gated by RLS — this is the actual enforcement point.
+drop trigger if exists workspace_members_protect_owner on public.workspace_members;
 create trigger workspace_members_protect_owner
   before insert or update or delete on public.workspace_members
   for each row execute procedure public.prevent_owner_role_tampering();
@@ -84,6 +85,7 @@ begin
 end;
 $$ language plpgsql security definer set search_path = public;
 
+drop trigger if exists workspace_invitations_check_role on public.workspace_invitations;
 create trigger workspace_invitations_check_role
   before insert on public.workspace_invitations
   for each row execute procedure public.check_invitation_role();

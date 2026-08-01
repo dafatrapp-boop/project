@@ -8,8 +8,11 @@
 -- a join table — tags here are free-form workspace-level labels, not
 -- a managed taxonomy, so this keeps it simple without over-building.
 -- ---------------------------------------------------------------------
-alter table public.leads add column tags text[] not null default '{}';
-create index leads_tags_idx on public.leads using gin (tags);
+do $$ begin
+  alter table public.leads add column tags text[] not null default '{}';
+exception when duplicate_column then null;
+end $$;
+create index if not exists leads_tags_idx on public.leads using gin (tags);
 
 -- ---------------------------------------------------------------------
 -- workspace_activity_log: "who did what" audit trail at the workspace
@@ -19,7 +22,7 @@ create index leads_tags_idx on public.leads using gin (tags);
 -- tamper-resistance pattern as lead_activities: no direct INSERT
 -- policy, so a member can't fabricate a fake log entry.
 -- ---------------------------------------------------------------------
-create table public.workspace_activity_log (
+create table if not exists public.workspace_activity_log (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   actor_id uuid references auth.users(id),
@@ -29,10 +32,11 @@ create table public.workspace_activity_log (
   created_at timestamptz not null default now()
 );
 
-create index workspace_activity_log_idx on public.workspace_activity_log (workspace_id, created_at desc);
+create index if not exists workspace_activity_log_idx on public.workspace_activity_log (workspace_id, created_at desc);
 
 alter table public.workspace_activity_log enable row level security;
 
+drop policy if exists "activity_log_select_member" on public.workspace_activity_log;
 create policy "activity_log_select_member"
   on public.workspace_activity_log for select
   using (public.is_workspace_member(workspace_id));
@@ -78,10 +82,12 @@ begin
 end;
 $$;
 
+drop trigger if exists on_landing_page_update_log on public.landing_pages;
 create trigger on_landing_page_update_log
   after update on public.landing_pages
   for each row execute procedure public.log_landing_page_change();
 
+drop trigger if exists on_landing_page_delete_log on public.landing_pages;
 create trigger on_landing_page_delete_log
   after delete on public.landing_pages
   for each row execute procedure public.log_landing_page_change();
@@ -95,6 +101,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_lead_delete_log on public.leads;
 create trigger on_lead_delete_log
   before delete on public.leads
   for each row execute procedure public.log_lead_delete();
@@ -115,10 +122,12 @@ begin
 end;
 $$;
 
+drop trigger if exists on_member_insert_log on public.workspace_members;
 create trigger on_member_insert_log
   after insert on public.workspace_members
   for each row execute procedure public.log_member_change();
 
+drop trigger if exists on_member_delete_log on public.workspace_members;
 create trigger on_member_delete_log
   after delete on public.workspace_members
   for each row execute procedure public.log_member_change();
@@ -128,7 +137,7 @@ create trigger on_member_delete_log
 -- "broadcast" row) — this keeps per-user read/unread state trivial to
 -- query and to RLS-protect (a user only ever sees their own rows).
 -- ---------------------------------------------------------------------
-create table public.notifications (
+create table if not exists public.notifications (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -140,14 +149,16 @@ create table public.notifications (
   created_at timestamptz not null default now()
 );
 
-create index notifications_user_idx on public.notifications (user_id, created_at desc);
+create index if not exists notifications_user_idx on public.notifications (user_id, created_at desc);
 
 alter table public.notifications enable row level security;
 
+drop policy if exists "notifications_select_own" on public.notifications;
 create policy "notifications_select_own"
   on public.notifications for select
   using (user_id = auth.uid());
 
+drop policy if exists "notifications_update_own" on public.notifications;
 create policy "notifications_update_own"
   on public.notifications for update
   using (user_id = auth.uid());
@@ -188,6 +199,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_lead_created_notify on public.leads;
 create trigger on_lead_created_notify
   after insert on public.leads
   for each row execute procedure public.notify_new_lead();
@@ -204,6 +216,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_campaign_created_notify on public.campaigns;
 create trigger on_campaign_created_notify
   after insert on public.campaigns
   for each row execute procedure public.notify_new_campaign();
@@ -216,7 +229,10 @@ create trigger on_campaign_created_notify
 -- load (see app code) and only creates one notification per 24h so it
 -- can't spam on every page view.
 -- ---------------------------------------------------------------------
-alter table public.workspaces add column plan_expires_at timestamptz;
+do $$ begin
+  alter table public.workspaces add column plan_expires_at timestamptz;
+exception when duplicate_column then null;
+end $$;
 
 create or replace function public.check_plan_expiry_notification(p_workspace_id uuid)
 returns void

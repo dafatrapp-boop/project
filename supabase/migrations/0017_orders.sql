@@ -6,9 +6,12 @@
 -- paid how, status what" and roll it up on the dashboard.
 -- =====================================================================
 
-create type public.order_status as enum ('pending', 'paid', 'preparing', 'delivered', 'cancelled');
+do $$ begin
+  create type public.order_status as enum ('pending', 'paid', 'preparing', 'delivered', 'cancelled');
+exception when duplicate_object then null;
+end $$;
 
-create table public.orders (
+create table if not exists public.orders (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   lead_id uuid references public.leads(id) on delete set null,
@@ -21,23 +24,27 @@ create table public.orders (
   updated_at timestamptz not null default now()
 );
 
-create index orders_workspace_created_idx on public.orders (workspace_id, created_at desc);
-create index orders_lead_idx on public.orders (lead_id);
+create index if not exists orders_workspace_created_idx on public.orders (workspace_id, created_at desc);
+create index if not exists orders_lead_idx on public.orders (lead_id);
 
 alter table public.orders enable row level security;
 
+drop policy if exists "orders_select_member" on public.orders;
 create policy "orders_select_member"
   on public.orders for select
   using (public.is_workspace_member(workspace_id));
 
+drop policy if exists "orders_insert_member" on public.orders;
 create policy "orders_insert_member"
   on public.orders for insert
   with check (public.is_workspace_member(workspace_id));
 
+drop policy if exists "orders_update_member" on public.orders;
 create policy "orders_update_member"
   on public.orders for update
   using (public.is_workspace_member(workspace_id));
 
+drop policy if exists "orders_delete_admin" on public.orders;
 create policy "orders_delete_admin"
   on public.orders for delete
   using (public.is_workspace_admin(workspace_id));
@@ -50,6 +57,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_orders_updated on public.orders;
 create trigger on_orders_updated
   before update on public.orders
   for each row execute procedure public.set_orders_updated_at();
@@ -60,7 +68,7 @@ create trigger on_orders_updated
 -- security_invoker = true so RLS on `orders` applies to the querying
 -- user, not the view owner — same pattern as campaign_stats /
 -- leads_daily_counts (0005/0007/0009).
-create view public.order_stats
+create or replace view public.order_stats
 with (security_invoker = true)
 as
 select

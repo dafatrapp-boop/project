@@ -6,7 +6,7 @@
 -- other analytics views (0005, 0007).
 -- =====================================================================
 
-create view public.campaign_daily_leads_counts
+create or replace view public.campaign_daily_leads_counts
 with (security_invoker = true)
 as
 select

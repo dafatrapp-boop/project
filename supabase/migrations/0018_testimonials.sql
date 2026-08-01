@@ -11,7 +11,7 @@
 -- toggle the spec asked for.
 -- =====================================================================
 
-create table public.testimonials (
+create table if not exists public.testimonials (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   customer_name text not null,
@@ -24,23 +24,27 @@ create table public.testimonials (
   created_at timestamptz not null default now()
 );
 
-create index testimonials_workspace_idx
+create index if not exists testimonials_workspace_idx
   on public.testimonials (workspace_id, display_order, created_at desc);
 
 alter table public.testimonials enable row level security;
 
+drop policy if exists "testimonials_select_member" on public.testimonials;
 create policy "testimonials_select_member"
   on public.testimonials for select
   using (public.is_workspace_member(workspace_id));
 
+drop policy if exists "testimonials_insert_member" on public.testimonials;
 create policy "testimonials_insert_member"
   on public.testimonials for insert
   with check (public.is_workspace_member(workspace_id));
 
+drop policy if exists "testimonials_update_member" on public.testimonials;
 create policy "testimonials_update_member"
   on public.testimonials for update
   using (public.is_workspace_member(workspace_id));
 
+drop policy if exists "testimonials_delete_member" on public.testimonials;
 create policy "testimonials_delete_member"
   on public.testimonials for delete
   using (public.is_workspace_member(workspace_id));
@@ -48,6 +52,7 @@ create policy "testimonials_delete_member"
 -- Public read for the landing page: only visible testimonials, and
 -- only through a published page — same trust boundary shape as
 -- landing_pages_select_public_published.
+drop policy if exists "testimonials_select_public" on public.testimonials;
 create policy "testimonials_select_public"
   on public.testimonials for select
   to anon

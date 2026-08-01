@@ -10,7 +10,7 @@
 -- (b) whether the merchant has finished/dismissed the setup wizard.
 -- =====================================================================
 
-create table public.user_guide_state (
+create table if not exists public.user_guide_state (
   user_id uuid not null references auth.users(id) on delete cascade,
   guide_key text not null,
   dismissed_at timestamptz not null default now(),
@@ -19,14 +19,17 @@ create table public.user_guide_state (
 
 alter table public.user_guide_state enable row level security;
 
+drop policy if exists "guide_state_select_own" on public.user_guide_state;
 create policy "guide_state_select_own"
   on public.user_guide_state for select
   using (user_id = auth.uid());
 
+drop policy if exists "guide_state_insert_own" on public.user_guide_state;
 create policy "guide_state_insert_own"
   on public.user_guide_state for insert
   with check (user_id = auth.uid());
 
+drop policy if exists "guide_state_delete_own" on public.user_guide_state;
 create policy "guide_state_delete_own"
   on public.user_guide_state for delete
   using (user_id = auth.uid());
@@ -35,4 +38,7 @@ create policy "guide_state_delete_own"
 -- equivalent for the wizard as a whole) without deleting their progress
 -- — progress is still derived live from real data, this only hides the
 -- wizard banner/page once they're done with it.
-alter table public.workspaces add column onboarding_dismissed_at timestamptz;
+do $$ begin
+  alter table public.workspaces add column onboarding_dismissed_at timestamptz;
+exception when duplicate_column then null;
+end $$;

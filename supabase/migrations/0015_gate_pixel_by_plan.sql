@@ -19,7 +19,7 @@ as $$
   join public.workspaces w on w.id = lp.workspace_id
   where lp.id = p_landing_page_id
     and lp.status = 'published'
-    and w.plan in ('starter', 'growth', 'pro');
+    and w.plan::text in ('starter', 'growth', 'pro');
 $$;
 
 -- Needed for the public page to know whether to show the free-tier
@@ -32,7 +32,7 @@ security definer
 stable
 set search_path = public
 as $$
-  select w.plan
+  select w.plan::public.workspace_plan
   from public.landing_pages lp
   join public.workspaces w on w.id = lp.workspace_id
   where lp.id = p_landing_page_id and lp.status = 'published';

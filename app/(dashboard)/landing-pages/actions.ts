@@ -8,13 +8,19 @@ import type { Section } from '@/lib/landing-pages/types';
 import { PLAN_LIMITS, isUnderLimit, hasFeature } from '@/lib/plans/constants';
 
 function slugify(input: string) {
-  return (
-    input
-      .trim()
-      .toLowerCase()
-      .replace(/[^\u0600-\u06FFa-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || `page-${Date.now()}`
-  );
+  // Deliberately Latin/ASCII-only. An earlier version kept Arabic
+  // characters in the slug (since most titles here are Arabic), but
+  // Arabic text in a URL path is fragile across browsers, messaging
+  // apps (WhatsApp/Instagram link previews), and copy-paste — it's
+  // what broke https://…/p/سارع-بالحجز-عرض-شهر-رمضان-mur6 above. The
+  // Arabic title is already shown everywhere in the dashboard UI;
+  // the public URL itself just needs to be a short, robust identifier.
+  const ascii = input
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return ascii || 'page';
 }
 
 export async function createLandingPageAction(formData: FormData) {

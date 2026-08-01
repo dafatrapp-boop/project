@@ -2,13 +2,19 @@
 -- SocialSales OS — Phase 5: Campaigns + Attribution
 -- =====================================================================
 
-create type public.campaign_platform as enum (
+do $$ begin
+  create type public.campaign_platform as enum (
   'facebook', 'instagram', 'tiktok', 'snapchat', 'google', 'whatsapp', 'other'
 );
+exception when duplicate_object then null;
+end $$;
 
-create type public.campaign_status as enum ('draft', 'active', 'paused', 'ended');
+do $$ begin
+  create type public.campaign_status as enum ('draft', 'active', 'paused', 'ended');
+exception when duplicate_object then null;
+end $$;
 
-create table public.campaigns (
+create table if not exists public.campaigns (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   name text not null,
@@ -26,37 +32,45 @@ create table public.campaigns (
   unique (workspace_id, utm_campaign)
 );
 
-create index campaigns_workspace_idx on public.campaigns (workspace_id);
+create index if not exists campaigns_workspace_idx on public.campaigns (workspace_id);
 
 alter table public.campaigns enable row level security;
 
+drop policy if exists "campaigns_select_member" on public.campaigns;
 create policy "campaigns_select_member"
   on public.campaigns for select
   using (public.is_workspace_member(workspace_id));
 
+drop policy if exists "campaigns_insert_member" on public.campaigns;
 create policy "campaigns_insert_member"
   on public.campaigns for insert
   with check (public.is_workspace_member(workspace_id));
 
+drop policy if exists "campaigns_update_member" on public.campaigns;
 create policy "campaigns_update_member"
   on public.campaigns for update
   using (public.is_workspace_member(workspace_id));
 
+drop policy if exists "campaigns_delete_admin" on public.campaigns;
 create policy "campaigns_delete_admin"
   on public.campaigns for delete
   using (public.is_workspace_admin(workspace_id));
 
+drop trigger if exists campaigns_set_updated_at on public.campaigns;
 create trigger campaigns_set_updated_at
   before update on public.campaigns
   for each row execute procedure public.set_updated_at();
 
 -- Now that campaigns exists, attach the FK the Phase 1 schema left
 -- open (see the comment on leads.campaign_id in 0001_foundation.sql).
-alter table public.leads
+do $$ begin
+  alter table public.leads
   add constraint leads_campaign_id_fkey
   foreign key (campaign_id) references public.campaigns(id) on delete set null;
+exception when duplicate_object then null;
+end $$;
 
-create index leads_campaign_idx on public.leads (workspace_id, campaign_id);
+create index if not exists leads_campaign_idx on public.leads (workspace_id, campaign_id);
 
 -- ---------------------------------------------------------------------
 -- Attribution: extend the Phase 4 public submission function so a lead
@@ -128,7 +142,7 @@ $$;
 -- conversion by campaign on the fly, so numbers are never stale.
 -- Views inherit RLS from the underlying tables they select from.
 -- ---------------------------------------------------------------------
-create view public.campaign_stats
+create or replace view public.campaign_stats
 with (security_invoker = true)
 as
 select
