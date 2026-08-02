@@ -7,6 +7,13 @@ import { OnboardingBanner } from '@/components/layout/onboarding-banner';
 import { ORDER_RELEVANT_INDUSTRIES } from '@/lib/orders/constants';
 import { getOnboardingChecklist, checklistProgress } from '@/lib/onboarding/checklist';
 
+// Every page under this layout is per-user data (workspace, leads,
+// campaigns, settings...). Forcing dynamic rendering here — on top of
+// the no-store fetch fix in lib/supabase/server.ts — makes sure this
+// entire section of the app is never eligible for Next.js's Full
+// Route Cache, in addition to bypassing the fetch-level Data Cache.
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardLayout({
   children,
 }: {

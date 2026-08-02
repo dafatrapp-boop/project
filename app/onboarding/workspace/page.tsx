@@ -49,6 +49,12 @@ const INDUSTRIES: {
 
 type Industry = (typeof INDUSTRIES)[number]['value'];
 
+// Reads/writes the current user's session and creates per-user rows —
+// must never be served from a cached response. See the matching note
+// in lib/supabase/server.ts (the fetch-level fix covers the data
+// layer; this covers the route/page rendering itself).
+export const dynamic = 'force-dynamic';
+
 function slugify(name: string) {
   return (
     name
@@ -80,6 +86,25 @@ async function createWorkspaceAction(formData: FormData) {
 
   if (!user) {
     redirect('/login');
+  }
+
+  // If this session already has a workspace, creating another one here
+  // would give the same user two `workspace_members` rows — and since
+  // nothing in this flow is meant to support multiple workspaces per
+  // user yet, that previously left requireWorkspace() with two rows to
+  // choose from with no defined order, so the dashboard could flip
+  // between showing the old workspace and the new one on different
+  // requests. Send an already-onboarded user straight to their
+  // dashboard instead of letting them create a second workspace.
+  const { data: existingMembership } = await supabase
+    .from('workspace_members')
+    .select('workspace_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (existingMembership) {
+    redirect('/dashboard');
   }
 
   const baseSlug = slugify(name);
@@ -166,11 +191,29 @@ async function createWorkspaceAction(formData: FormData) {
   redirect('/onboarding/setup');
 }
 
-export default function WorkspaceOnboardingPage({
+export default async function WorkspaceOnboardingPage({
   searchParams,
 }: {
   searchParams: { error?: string };
 }) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    const { data: existingMembership } = await supabase
+      .from('workspace_members')
+      .select('workspace_id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingMembership) {
+      redirect('/dashboard');
+    }
+  }
+
   const errorMessage =
     searchParams.error === 'missing_name'
       ? 'يرجى إدخال اسم النشاط التجاري.'

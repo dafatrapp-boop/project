@@ -20,6 +20,14 @@ export async function requireWorkspace() {
     .from('workspace_members')
     .select('workspace_id, role')
     .eq('user_id', user.id)
+    // A user can legitimately belong to more than one workspace (their
+    // own + any team they were invited into). Without an explicit
+    // order, Postgres gives no guarantee which row `.limit(1)` returns
+    // — it can differ between requests. Prefer a workspace they own,
+    // then fall back to their oldest membership, so the same user
+    // always lands in the same place instead of it flipping around.
+    .order('role', { ascending: true }) // member_role enum is declared ('owner','admin','agent') — Postgres enums sort by declaration order, so this already puts 'owner' first
+    .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle();
 
