@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition, type FormEvent } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { bookAppointmentAction } from '@/app/p/[slug]/actions';
+import { validateIraqiPhone, phoneErrorMessage } from '@/lib/phone';
 
 interface Settings {
   enabled: boolean;
@@ -35,6 +36,7 @@ function buildSlots(settings: Settings): string[] {
 
 const ERROR_MESSAGES: Record<string, string> = {
   missing_fields: 'يرجى تعبئة الاسم واختيار التاريخ والوقت، ورقم الهاتف أو البريد.',
+  invalid_phone: 'رقم الهاتف غير صحيح. أدخل رقمًا عراقيًا صالحًا (مثال: 07712345678).',
   rate_limited: 'تم إرسال عدة طلبات، يرجى المحاولة لاحقًا.',
   slot_full: 'هذا الوقت أصبح محجوزًا بالكامل، يرجى اختيار وقت آخر.',
   unavailable: 'هذا الوقت غير متاح، يرجى اختيار يوم أو وقت آخر.',
@@ -100,6 +102,17 @@ export function AppointmentBookingWidget({
     }
     setError(null);
     const formData = new FormData(e.currentTarget);
+    const phone = String(formData.get('phone') ?? '').trim();
+
+    if (phone) {
+      const check = validateIraqiPhone(phone);
+      if (!check.valid) {
+        setError(phoneErrorMessage(check.reason!));
+        return;
+      }
+      formData.set('phone', check.normalized!);
+    }
+
     formData.set('date', date);
     formData.set('time', selectedTime);
 
@@ -212,7 +225,10 @@ export function AppointmentBookingWidget({
           />
           <input
             name="phone"
-            placeholder="رقم الهاتف"
+            type="tel"
+            inputMode="numeric"
+            dir="ltr"
+            placeholder="07xxxxxxxxx (رقم عراقي، +964)"
             className="h-11 rounded-md border border-border bg-surface px-3 text-sm text-ink placeholder:text-ink-faint focus-visible:border-brand-500"
           />
           <input

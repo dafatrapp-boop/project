@@ -23,6 +23,39 @@ function slugify(input: string) {
   return ascii || 'page';
 }
 
+function randomSlugSuffix() {
+  return Math.random().toString(36).slice(2, 6);
+}
+
+const POSTGRES_UNIQUE_VIOLATION = '23505';
+
+/**
+ * `slug` is now unique across every workspace, not just within one
+ * (see migration 0022 — closes the cross-tenant slug collision bug
+ * from the architecture review). A collision on the random suffix is
+ * rare but no longer impossible to hit in practice with many tenants,
+ * so instead of surfacing the raw DB error to the user, retry a few
+ * times with a fresh suffix before giving up.
+ */
+async function insertWithUniqueSlug<T>(
+  attemptInsert: (slug: string) => Promise<{ data: T | null; error: { code?: string; message: string } | null }>,
+  baseSlug: string,
+  maxAttempts = 5
+): Promise<{ data: T | null; error: { code?: string; message: string } | null }> {
+  let lastResult: { data: T | null; error: { code?: string; message: string } | null } = {
+    data: null,
+    error: { message: 'unreachable' },
+  };
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const slug = `${baseSlug}-${randomSlugSuffix()}`;
+    lastResult = await attemptInsert(slug);
+    if (!lastResult.error || lastResult.error.code !== POSTGRES_UNIQUE_VIOLATION) {
+      return lastResult;
+    }
+  }
+  return lastResult;
+}
+
 export async function createLandingPageAction(formData: FormData) {
   const { supabase, workspaceId, plan } = await requireWorkspace();
 
@@ -45,24 +78,26 @@ export async function createLandingPageAction(formData: FormData) {
 
   const template = TEMPLATES.find((t) => t.id === templateId) ?? TEMPLATES[TEMPLATES.length - 1];
   const baseSlug = slugify(title);
-  const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`;
 
-    const { data, error } = await supabase
-    .from('landing_pages')
-    .insert({
-      workspace_id: workspaceId,
-      title,
-      slug,
-      template: template.id,
-      status: 'draft',
-      sections: template.sections,
-      whatsapp_number: null,
-      meta_title: null,
-      meta_description: null,
-    })
-    .select('id')
-    .single();
-
+  const { data, error } = await insertWithUniqueSlug(
+    (slug) =>
+      supabase
+        .from('landing_pages')
+        .insert({
+          workspace_id: workspaceId,
+          title,
+          slug,
+          template: template.id,
+          status: 'draft',
+          sections: template.sections,
+          whatsapp_number: null,
+          meta_title: null,
+          meta_description: null,
+        })
+        .select('id')
+        .single(),
+    baseSlug
+  );
 
   if (error || !data) {
     redirect('/landing-pages/new?error=create_failed');
@@ -193,23 +228,27 @@ export async function duplicateLandingPageAction(pageId: string) {
   }
 
   const newTitle = `${original.title} (نسخة)`;
-  const slug = `${slugify(newTitle)}-${Math.random().toString(36).slice(2, 6)}`;
+  const baseSlug = slugify(newTitle);
 
-  const { data: copy, error } = await supabase
-    .from('landing_pages')
-    .insert({
-      workspace_id: workspaceId,
-      title: newTitle,
-      slug,
-      template: original.template,
-      status: 'draft', // duplicates always start unpublished, even if the original was live
-      sections: original.sections,
-      whatsapp_number: original.whatsapp_number,
-      meta_title: original.meta_title,
-      meta_description: original.meta_description,
-    })
-    .select('id')
-    .single();
+  const { data: copy, error } = await insertWithUniqueSlug(
+    (slug) =>
+      supabase
+        .from('landing_pages')
+        .insert({
+          workspace_id: workspaceId,
+          title: newTitle,
+          slug,
+          template: original.template,
+          status: 'draft', // duplicates always start unpublished, even if the original was live
+          sections: original.sections,
+          whatsapp_number: original.whatsapp_number,
+          meta_title: original.meta_title,
+          meta_description: original.meta_description,
+        })
+        .select('id')
+        .single(),
+    baseSlug
+  );
 
   if (error || !copy) {
     redirect('/landing-pages?error=duplicate_failed');

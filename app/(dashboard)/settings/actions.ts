@@ -16,16 +16,26 @@ export async function updateMetaPixelAction(formData: FormData) {
   // Meta Pixel IDs are purely numeric, typically 15-16 digits. We only
   // validate shape here — we never generate or infer this value; it
   // must be the merchant's own ID from their Meta Events Manager.
-  if (raw && !/^\d{10,20}$/.test(raw)) {
+  //
+  // This field is required: previously an empty submission skipped
+  // validation entirely, saved `null`, and still redirected to the
+  // generic success message — so clearing the field (or a typo that
+  // produced an empty string) looked like a successful save when
+  // nothing valid had actually been stored.
+  if (!raw) {
+    redirect('/settings?error=missing_pixel_id');
+  }
+  if (!/^\d{10,20}$/.test(raw)) {
     redirect('/settings?error=invalid_pixel_id');
   }
 
   const { error } = await supabase
     .from('workspaces')
-    .update({ meta_pixel_id: raw || null })
+    .update({ meta_pixel_id: raw })
     .eq('id', workspaceId);
   if (error) {
     console.error('[workspaces] update/delete failed:', error);
+    redirect('/settings?error=save_failed');
   }
 
   revalidatePath('/settings');

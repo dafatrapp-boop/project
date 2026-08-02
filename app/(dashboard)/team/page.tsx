@@ -1,7 +1,9 @@
 import { requireWorkspace } from '@/lib/workspace';
+import { getAppBaseUrl } from '@/lib/site-url';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
+import { CopyableValue } from '@/components/ui/copyable-value';
 import { PLAN_LABELS, PLAN_LIMITS, type Plan } from '@/lib/plans/constants';
 import { ROLE_LABELS } from './constants';
 import { MemberRow } from './member-row';
@@ -36,6 +38,7 @@ export default async function TeamPage({
             .select('id, email, role, expires_at, accepted_at, token')
             .eq('workspace_id', workspaceId)
             .is('accepted_at', null)
+            .order('created_at', { ascending: false })
         : Promise.resolve({ data: [] }),
       supabase.from('workspaces').select('plan, stripe_customer_id').eq('id', workspaceId).single(),
       supabase
@@ -63,6 +66,7 @@ export default async function TeamPage({
   const stripeCustomerId = workspace?.stripe_customer_id ?? null;
   const limits = PLAN_LIMITS[plan];
   const pendingInvites = (invitations ?? []).filter((i) => new Date(i.expires_at) > new Date());
+  const baseUrl = getAppBaseUrl();
 
   return (
     <div className="flex flex-col gap-6">
@@ -76,7 +80,12 @@ export default async function TeamPage({
       )}
       {searchParams.success === 'invited' && (
         <div className="rounded-md border border-success/30 bg-success-50 px-3 py-2 text-body-sm text-success">
-          تم إنشاء الدعوة. شارك رابط القبول مع الشخص المدعو (لا يوجد إرسال بريد تلقائي بعد).
+          <p className="mb-2">
+            تم إنشاء الدعوة. لا يوجد إرسال بريد تلقائي بعد — انسخ الرابط التالي وشاركه مع الشخص المدعو:
+          </p>
+          {pendingInvites[0] && (
+            <CopyableValue value={`${baseUrl}/invite/${pendingInvites[0].token}`} />
+          )}
         </div>
       )}
 
@@ -136,14 +145,14 @@ export default async function TeamPage({
               <h3 className="mb-2 text-caption font-medium text-ink-muted">دعوات قيد الانتظار</h3>
               <div className="flex flex-col gap-2">
                 {pendingInvites.map((inv) => (
-                  <div key={inv.id} className="flex items-center justify-between rounded-md bg-surface-subtle p-2 text-body-sm">
-                    <div>
+                  <div key={inv.id} className="flex flex-col gap-2 rounded-md bg-surface-subtle p-2 text-body-sm sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0 flex-1">
                       <p className="text-ink">
                         {inv.email} · {ROLE_LABELS[inv.role]}
                       </p>
-                      <p className="text-caption text-ink-faint" dir="ltr">
-                        /invite/{inv.token}
-                      </p>
+                      <div className="mt-1.5">
+                        <CopyableValue value={`${baseUrl}/invite/${inv.token}`} />
+                      </div>
                     </div>
                     <CancelInvitationButton invitationId={inv.id} />
                   </div>

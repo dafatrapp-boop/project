@@ -1,15 +1,18 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Eye, Users, Trophy, TrendingUp, FileText, History, ExternalLink, Phone, MessageCircle } from 'lucide-react';
+import { Eye, Users, Trophy, TrendingUp, FileText, History, ExternalLink, Phone, MessageCircle, Link2 } from 'lucide-react';
 import { requireWorkspace } from '@/lib/workspace';
+import { getAppBaseUrl } from '@/lib/site-url';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader } from '@/components/ui/card';
 import { StatCard } from '@/components/ui/stat-card';
 import { Table } from '@/components/ui/table';
+import { CopyableValue } from '@/components/ui/copyable-value';
 import {
   PLATFORM_LABELS,
   CAMPAIGN_STATUS_LABELS,
   CAMPAIGN_STATUS_TONE,
+  UTM_MEDIUM_BY_PLATFORM,
 } from '@/lib/campaigns/constants';
 import { LEAD_STATUS_LABELS, LEAD_STATUS_TONE, ACTIVITY_LABELS, type LeadStatus } from '@/lib/leads/constants';
 import { digitsOnly, whatsAppLink } from '@/lib/utils';
@@ -67,6 +70,16 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
 
   const conversionRate =
     stats && stats.views_count > 0 ? ((stats.leads_count / stats.views_count) * 100).toFixed(1) : null;
+
+  const trackingUrl = landingPage
+    ? (() => {
+        const url = new URL(`${getAppBaseUrl()}/p/${landingPage.slug}`);
+        url.searchParams.set('utm_source', campaign.platform);
+        url.searchParams.set('utm_medium', UTM_MEDIUM_BY_PLATFORM[campaign.platform]);
+        url.searchParams.set('utm_campaign', campaign.utm_campaign);
+        return url.toString();
+      })()
+    : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -167,6 +180,17 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
               <p className="text-body-sm text-ink-faint">لا توجد صفحة هبوط مرتبطة بهذه الحملة.</p>
             )}
           </Card>
+
+          {trackingUrl && (
+            <Card>
+              <CardHeader title="رابط التتبع للإعلان" action={<Link2 size={16} className="text-ink-faint" />} />
+              <p className="mb-2 text-body-sm text-ink-faint">
+                استخدم هذا الرابط في إعدادات الإعلان على {PLATFORM_LABELS[campaign.platform]} بدلًا من رابط الصفحة
+                العادي، ليتم ربط الزيارات والعملاء المحتملين تلقائيًا بهذه الحملة.
+              </p>
+              <CopyableValue value={trackingUrl} />
+            </Card>
+          )}
 
           <Card>
             <CardHeader title="سجل النشاط" action={<History size={16} className="text-ink-faint" />} />

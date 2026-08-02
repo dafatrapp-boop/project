@@ -20,6 +20,8 @@ import {
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid_pixel_id: 'رقم Meta Pixel غير صالح — يجب أن يتكون من أرقام فقط (10-20 رقمًا).',
+  missing_pixel_id: 'يرجى إدخال رقم Meta Pixel — لا يمكن حفظ الحقل فارغًا.',
+  save_failed: 'تعذر حفظ رقم Meta Pixel. حاول مرة أخرى.',
   not_authorized: 'يلزم أن تكون مالكًا أو مشرفًا لتعديل هذا الإعداد.',
   invalid_hours: 'وقت البداية يجب أن يكون قبل وقت النهاية.',
   missing_working_days: 'اختر يومًا واحدًا على الأقل من أيام العمل.',
@@ -127,6 +129,10 @@ const workspace = Array.isArray(workspaceRaw) ? workspaceRaw[0] ?? null : worksp
             label="Meta Pixel ID"
             placeholder="مثال: 1234567890123456"
             defaultValue={workspace?.meta_pixel_id ?? ''}
+            required
+            pattern="\d{10,20}"
+            title="أرقام فقط، من 10 إلى 20 رقمًا"
+            hint="مطلوب — أرقام فقط (10 إلى 20 رقمًا)، من Meta Events Manager."
             dir="ltr"
           />
           <Button type="submit" variant="secondary" className="self-start">

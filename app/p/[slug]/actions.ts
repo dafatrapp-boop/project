@@ -3,6 +3,7 @@
 import { headers } from 'next/headers';
 import { createHash } from 'crypto';
 import { createClient } from '@/lib/supabase/server';
+import { validateIraqiPhone } from '@/lib/phone';
 
 function hashIp(ip: string) {
   return createHash('sha256').update(ip).digest('hex');
@@ -35,6 +36,18 @@ export async function submitLeadFormAction(
     return { ok: false, error: 'missing_fields' };
   }
 
+  // Never trust the client's own validation — re-check server-side so a
+  // request built without the browser form (curl, a modified client)
+  // can't write an unusable phone number straight into the CRM.
+  let normalizedPhone: string | null = null;
+  if (phone) {
+    const check = validateIraqiPhone(phone);
+    if (!check.valid) {
+      return { ok: false, error: 'invalid_phone' };
+    }
+    normalizedPhone = check.normalized!;
+  }
+
   const forwardedFor = headers().get('x-forwarded-for') ?? 'unknown';
   const ipHash = hashIp(forwardedFor.split(',')[0].trim());
 
@@ -52,7 +65,7 @@ export async function submitLeadFormAction(
   const { data: leadId, error } = await supabase.rpc('submit_lead_from_landing_page', {
     p_landing_page_id: landingPageId,
     p_full_name: fullName,
-    p_phone: phone || null,
+    p_phone: normalizedPhone,
     p_email: email || null,
     p_utm_source: utmSource,
     p_utm_medium: utmMedium,
@@ -91,6 +104,15 @@ export async function bookAppointmentAction(
     return { ok: false, error: 'missing_fields' };
   }
 
+  let normalizedPhone: string | null = null;
+  if (phone) {
+    const check = validateIraqiPhone(phone);
+    if (!check.valid) {
+      return { ok: false, error: 'invalid_phone' };
+    }
+    normalizedPhone = check.normalized!;
+  }
+
   const forwardedFor = headers().get('x-forwarded-for') ?? 'unknown';
   const ipHash = hashIp(forwardedFor.split(',')[0].trim());
 
@@ -113,7 +135,7 @@ export async function bookAppointmentAction(
     p_date: date,
     p_start_time: time,
     p_customer_name: customerName,
-    p_phone: phone || null,
+    p_phone: normalizedPhone,
     p_email: email || null,
   });
 
