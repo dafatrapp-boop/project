@@ -48,7 +48,7 @@ async function goToPortal(setLoading: (v: boolean) => void, setError: (v: string
   }
 }
 
-const UPGRADE_PLANS: Plan[] = ['starter', 'growth', 'pro'];
+const UPGRADE_PLANS: Array<'starter' | 'growth' | 'pro'> = ['starter', 'growth', 'pro'];
 
 function limitText(n: number) {
   return n === -1 ? 'غير محدود' : n.toString();
