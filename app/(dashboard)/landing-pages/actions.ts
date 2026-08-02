@@ -79,7 +79,7 @@ export async function createLandingPageAction(formData: FormData) {
   const template = TEMPLATES.find((t) => t.id === templateId) ?? TEMPLATES[TEMPLATES.length - 1];
   const baseSlug = slugify(title);
 
-  const { data, error } = await insertWithUniqueSlug(
+  const { data, error } = await insertWithUniqueSlug<{ id: string }>(
     (slug) =>
       supabase
         .from('landing_pages')
@@ -230,7 +230,7 @@ export async function duplicateLandingPageAction(pageId: string) {
   const newTitle = `${original.title} (نسخة)`;
   const baseSlug = slugify(newTitle);
 
-  const { data: copy, error } = await insertWithUniqueSlug(
+  const { data: copy, error } = await insertWithUniqueSlug<{ id: string }>(
     (slug) =>
       supabase
         .from('landing_pages')
