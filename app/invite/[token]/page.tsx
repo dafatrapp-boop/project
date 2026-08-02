@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ShieldAlert, UserPlus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { AuthShell } from '@/components/auth/auth-shell';
 import { AuthCard } from '@/components/auth/auth-card';
 import { AuthAlert } from '@/components/auth/auth-alert';
@@ -34,8 +35,8 @@ export default async function InvitePage({
             <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-danger-50 text-danger">
               <ShieldAlert size={26} />
             </div>
-            <h1 className="mb-2 text-[22px] font-semibold tracking-[-0.01em] text-ink">الدعوة غير صالحة</h1>
-            <p className="text-[15px] leading-relaxed text-ink-muted">
+            <h1 className="mb-2 text-title-lg text-ink">الدعوة غير صالحة</h1>
+            <p className="text-body-lg leading-relaxed text-ink-muted">
               انتهت صلاحية هذه الدعوة أو أنها استُخدمت من قبل. يرجى طلب دعوة جديدة من مالك مساحة العمل.
             </p>
           </>
@@ -44,10 +45,10 @@ export default async function InvitePage({
             <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
               <UserPlus size={26} />
             </div>
-            <h1 className="mb-2 text-[22px] font-semibold tracking-[-0.01em] text-ink">
+            <h1 className="mb-2 text-title-lg text-ink">
               دعوة للانضمام إلى {invitation.workspace_name}
             </h1>
-            <p className="mb-7 text-[15px] leading-relaxed text-ink-muted">
+            <p className="mb-7 text-body-lg leading-relaxed text-ink-muted">
               تمت دعوتك للانضمام بصفة &quot;{ROLE_LABELS[invitation.role]}&quot;.
             </p>
 
@@ -59,13 +60,13 @@ export default async function InvitePage({
 
             {user ? (
               <form action={async () => acceptInvitationAction(params.token)}>
-                <Button type="submit" size="lg" className="w-full">
+                <SubmitButton size="lg" className="w-full">
                   قبول الدعوة
-                </Button>
+                </SubmitButton>
               </form>
             ) : (
               <div className="flex flex-col gap-2.5">
-                <p className="mb-1 text-xs text-ink-faint">
+                <p className="mb-1 text-caption text-ink-faint">
                   سجّل الدخول أو أنشئ حسابًا بالبريد {invitation.email} لقبول الدعوة.
                 </p>
                 <Link href={`/login?redirectTo=${encodeURIComponent(`/invite/${params.token}`)}`}>

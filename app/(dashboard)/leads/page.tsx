@@ -1,15 +1,20 @@
 import Link from 'next/link';
-import { Download, Upload, KanbanSquare } from 'lucide-react';
+import { Download, Upload, KanbanSquare, MoreVertical, Phone, MessageCircle, Users } from 'lucide-react';
 import { requireWorkspace } from '@/lib/workspace';
 import { Table, type Column } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Select } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Button, IconButton } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
+import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { AddLeadButton } from './add-lead-button';
 import { hasFeature } from '@/lib/plans/constants';
 import { PageGuide } from '@/components/guide/page-guide';
 import { getGuideDismissed } from '@/lib/guide/state';
 import { LEADS_GUIDE } from '@/lib/guide/content';
+import { digitsOnly, whatsAppLink } from '@/lib/utils';
 import {
   LEAD_STATUS_LABELS,
   LEAD_STATUS_TONE,
@@ -72,7 +77,35 @@ export default async function LeadsPage({
         </Link>
       ),
     },
-    { header: 'الهاتف', cell: (row) => row.phone ?? '—' },
+    {
+      header: 'الهاتف',
+      cell: (row) =>
+        row.phone ? (
+          <span className="flex items-center gap-2.5">
+            <span className="text-ink">{row.phone}</span>
+            <span className="flex items-center gap-1">
+              <a
+                href={`tel:${digitsOnly(row.phone)}`}
+                aria-label={`اتصال بـ ${row.full_name}`}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-brand-50 hover:text-brand-600"
+              >
+                <Phone size={14} />
+              </a>
+              <a
+                href={whatsAppLink(row.phone)}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`واتساب ${row.full_name}`}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-success-50 hover:text-success"
+              >
+                <MessageCircle size={14} />
+              </a>
+            </span>
+          </span>
+        ) : (
+          '—'
+        ),
+    },
     { header: 'المصدر', cell: (row) => row.source ?? '—' },
     {
       header: 'الحالة',
@@ -101,94 +134,96 @@ export default async function LeadsPage({
     cell: (row) => new Date(row.created_at).toLocaleDateString('ar-SA'),
   });
 
+  // Overflow menu items — CSV/Excel import/export used to render as
+  // 3-4 same-weight buttons in the toolbar (Phase 1 finding). Pipeline
+  // stays a first-class visible action since it's a primary way of
+  // working leads, not a secondary utility.
+  const overflowItems = [
+    ...(showImport ? [{ label: 'استيراد CSV', icon: <Upload size={15} />, href: '/leads/import' }] : []),
+    { label: 'تصدير CSV', icon: <Download size={15} />, href: '/api/exports/leads' },
+    ...(showExcel ? [{ label: 'تصدير Excel', icon: <Download size={15} />, href: '/api/exports/leads-xlsx' }] : []),
+  ];
+
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-ink">العملاء المحتملون</h1>
-          <p className="text-sm text-ink-muted">تابع كل زائر تحول إلى عميل محتمل من إعلاناتك.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {showKanban && (
-            <Link
-              href="/leads/pipeline"
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-ink hover:bg-surface-subtle"
-            >
-              <KanbanSquare size={16} />
-              عرض Pipeline
-            </Link>
-          )}
-          {showImport && (
-            <Link
-              href="/leads/import"
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-ink hover:bg-surface-subtle"
-            >
-              <Upload size={16} />
-              استيراد CSV
-            </Link>
-          )}
-          <a
-            href="/api/exports/leads"
-            className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-ink hover:bg-surface-subtle"
-          >
-            <Download size={16} />
-            تصدير CSV
-          </a>
-          {showExcel && (
-            <a
-              href="/api/exports/leads-xlsx"
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-ink hover:bg-surface-subtle"
-            >
-              <Download size={16} />
-              تصدير Excel
-            </a>
-          )}
-          <AddLeadButton />
-        </div>
-      </div>
+      <PageHeader
+        title="العملاء المحتملون"
+        description="تابع كل زائر تحول إلى عميل محتمل من إعلاناتك."
+        actions={
+          <>
+            {showKanban && (
+              <Link href="/leads/pipeline">
+                <Button variant="secondary" size="sm">
+                  <KanbanSquare size={15} />
+                  عرض Pipeline
+                </Button>
+              </Link>
+            )}
+            {overflowItems.length > 0 && (
+              <DropdownMenu
+                trigger={
+                  <IconButton variant="secondary" size="sm" aria-label="المزيد من الإجراءات">
+                    <MoreVertical size={16} />
+                  </IconButton>
+                }
+                items={overflowItems}
+              />
+            )}
+            <AddLeadButton />
+          </>
+        }
+      />
 
       <PageGuide guideKey="leads" title={LEADS_GUIDE.title} steps={LEADS_GUIDE.steps} initiallyDismissed={guideDismissed} />
 
       {searchParams.error && (
-        <div className="rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-sm text-warning">
+        <div className="rounded-md border border-warning/30 bg-warning-50 px-3 py-2 text-body-sm text-warning">
           {ERROR_MESSAGES[searchParams.error] ?? 'حدث خطأ.'}
         </div>
       )}
 
-      <form className="flex flex-col gap-3 sm:flex-row" method="get">
-        <div className="flex-1">
-          <Input
-            name="q"
-            defaultValue={searchParams.q}
-            placeholder="ابحث بالاسم أو الهاتف أو البريد الإلكتروني..."
-          />
-        </div>
-        <div className="sm:w-48">
-          <Select name="status" defaultValue={searchParams.status ?? ''}>
-            <option value="">كل الحالات</option>
-            {LEAD_STATUS_ORDER.map((status) => (
-              <option key={status} value={status}>
-                {LEAD_STATUS_LABELS[status]}
-              </option>
-            ))}
-          </Select>
-        </div>
-        {showTags && (
-          <div className="sm:w-40">
-            <Select name="tag" defaultValue={searchParams.tag ?? ''}>
-              <option value="">كل الوسوم</option>
-              <option value="VIP">VIP</option>
-              <option value="ساخن">ساخن</option>
-              <option value="بارد">بارد</option>
+      <Card padding="md" tone="sunken">
+        <form className="flex flex-col gap-3 sm:flex-row" method="get">
+          <div className="flex-1">
+            <Input
+              name="q"
+              defaultValue={searchParams.q}
+              placeholder="ابحث بالاسم أو الهاتف أو البريد الإلكتروني..."
+            />
+          </div>
+          <div className="sm:w-48">
+            <Select name="status" defaultValue={searchParams.status ?? ''}>
+              <option value="">كل الحالات</option>
+              {LEAD_STATUS_ORDER.map((status) => (
+                <option key={status} value={status}>
+                  {LEAD_STATUS_LABELS[status]}
+                </option>
+              ))}
             </Select>
           </div>
-        )}
-      </form>
+          {showTags && (
+            <div className="sm:w-40">
+              <Select name="tag" defaultValue={searchParams.tag ?? ''}>
+                <option value="">كل الوسوم</option>
+                <option value="VIP">VIP</option>
+                <option value="ساخن">ساخن</option>
+                <option value="بارد">بارد</option>
+              </Select>
+            </div>
+          )}
+          <Button type="submit" variant="secondary" className="sm:w-auto">
+            تصفية
+          </Button>
+        </form>
+      </Card>
 
       <Table<LeadRow>
         keyField={(row) => row.id}
         rows={leads ?? []}
-        emptyMessage="لا يوجد عملاء محتملون بعد. أضف أول عميل أو انتظر أول استمارة من صفحة الهبوط."
+        emptyIcon={Users}
+        emptyTitle="لا يوجد عملاء محتملون بعد"
+        emptyMessage="أضف أول عميل أو انتظر أول استمارة من صفحة الهبوط."
+        emptyAction={<AddLeadButton />}
         columns={columns}
       />
     </div>

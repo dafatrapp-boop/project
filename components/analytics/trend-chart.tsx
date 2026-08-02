@@ -28,13 +28,13 @@ export function TrendChart({ data }: { data: TrendPoint[] }) {
     <div className="h-72 w-full" dir="ltr">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(214 20% 91%)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis dataKey="day" tick={{ fontSize: 12 }} />
           <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
           <Tooltip />
           <Legend />
-          <Line type="monotone" dataKey="views" name="الزيارات" stroke="hsl(234 76% 58%)" strokeWidth={2} dot={false} />
-          <Line type="monotone" dataKey="leads" name="العملاء المحتملون" stroke="hsl(152 60% 36%)" strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="views" name="الزيارات" stroke="hsl(var(--brand-500))" strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="leads" name="العملاء المحتملون" stroke="hsl(var(--success))" strokeWidth={2} dot={false} />
         </LineChart>
       </ResponsiveContainer>
     </div>

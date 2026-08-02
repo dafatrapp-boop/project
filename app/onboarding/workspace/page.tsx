@@ -12,11 +12,12 @@ import {
   Check,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { AuthShell } from '@/components/auth/auth-shell';
 import { AuthCard } from '@/components/auth/auth-card';
 import { AuthAlert } from '@/components/auth/auth-alert';
+import { OnboardingSteps } from '@/components/auth/onboarding-steps';
 import { TEMPLATES } from '@/lib/landing-pages/templates';
 
 const INDUSTRIES: {
@@ -160,6 +161,13 @@ export default function WorkspaceOnboardingPage({
 }: {
   searchParams: { error?: string };
 }) {
+  const errorMessage =
+    searchParams.error === 'missing_name'
+      ? 'يرجى إدخال اسم النشاط التجاري.'
+      : searchParams.error
+        ? 'تعذر إنشاء مساحة العمل. حاول مرة أخرى.'
+        : null;
+
   return (
     <AuthShell
       formWidth="lg"
@@ -167,7 +175,8 @@ export default function WorkspaceOnboardingPage({
       panelSubtitle="اختر المجال الأقرب لعملك، وسنقترح عليك قالب صفحة هبوط جاهز يمكنك تعديله لاحقًا بحرية."
     >
       <AuthCard title="أنشئ مساحة عملك" description="سنخصص لك التجربة بناءً على نوع نشاطك التجاري.">
-        {searchParams.error && <AuthAlert tone="danger">{searchParams.error}</AuthAlert>}
+        <OnboardingSteps current={1} />
+        {errorMessage && <AuthAlert tone="danger">{errorMessage}</AuthAlert>}
 
         <form action={createWorkspaceAction} className="flex flex-col gap-6">
           <Input
@@ -179,7 +188,7 @@ export default function WorkspaceOnboardingPage({
           />
 
           <fieldset>
-            <legend className="mb-3 text-sm font-medium text-ink">مجال النشاط</legend>
+            <legend className="mb-3 text-body-sm font-medium text-ink">مجال النشاط</legend>
 
             <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
               {INDUSTRIES.map((industry, i) => {
@@ -187,7 +196,7 @@ export default function WorkspaceOnboardingPage({
                 return (
                   <label
                     key={industry.value}
-                    className="group relative flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-surface p-3.5 text-start transition-all duration-150 hover:border-ink/20 hover:shadow-subtle has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:shadow-glow"
+                    className="group relative flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-surface p-3.5 text-start transition-all duration-fast ease-out hover:border-border-strong hover:shadow-subtle has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:shadow-glow"
                   >
                     <input
                       type="radio"
@@ -201,8 +210,8 @@ export default function WorkspaceOnboardingPage({
                       <Icon size={17} />
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-sm font-medium text-ink">{industry.label}</span>
-                      <span className="block text-xs leading-relaxed text-ink-muted">{industry.hint}</span>
+                      <span className="block text-body-sm font-medium text-ink">{industry.label}</span>
+                      <span className="block text-caption leading-relaxed text-ink-muted">{industry.hint}</span>
                     </span>
                     <span className="absolute end-3 top-3 flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 text-white opacity-0 transition-opacity peer-checked:opacity-100">
                       <Check size={10} strokeWidth={3} />
@@ -213,9 +222,9 @@ export default function WorkspaceOnboardingPage({
             </div>
           </fieldset>
 
-          <Button type="submit" size="lg" className="w-full">
+          <SubmitButton size="lg" className="w-full">
             متابعة
-          </Button>
+          </SubmitButton>
         </form>
       </AuthCard>
     </AuthShell>

@@ -1,7 +1,12 @@
 import Link from 'next/link';
-import { Download } from 'lucide-react';
+import { Download, Eye, Users, Trophy, TrendingUp, Wallet, Filter, GitCommitHorizontal, LineChart as LineChartIcon, PieChart, Megaphone } from 'lucide-react';
 import { requireWorkspace } from '@/lib/workspace';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader } from '@/components/ui/card';
+import { StatCard } from '@/components/ui/stat-card';
+import { PageHeader } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { TrendChart, type TrendPoint } from '@/components/analytics/trend-chart';
 import { SourceBreakdownChart, type SourceCount } from '@/components/analytics/source-breakdown-chart';
 import { CampaignBreakdownChart, type CampaignCount } from '@/components/analytics/campaign-breakdown-chart';
@@ -22,6 +27,14 @@ function formatDay(day: string) {
   return new Date(day).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' });
 }
 
+/** % change vs. previous period — undefined (no badge) when there's no
+ * prior-period baseline to compare against, rather than showing a
+ * misleading "+∞%". */
+function pctChange(curr: number, prev: number): number | undefined {
+  if (prev === 0) return undefined;
+  return Math.round(((curr - prev) / prev) * 100);
+}
+
 export default async function AnalyticsPage({
   searchParams,
 }: {
@@ -35,6 +48,15 @@ export default async function AnalyticsPage({
   const since = new Date();
   since.setDate(since.getDate() - validRange);
   const sinceIso = since.toISOString();
+  const sinceDay = sinceIso.slice(0, 10);
+
+  // Previous period of equal length, immediately before `since` — used
+  // only for the KPI trend badges (Phase 4.2 "comparison views"
+  // objective). Read-only, reuses the same daily-aggregate tables the
+  // rest of the page already queries.
+  const prevSince = new Date(since);
+  prevSince.setDate(prevSince.getDate() - validRange);
+  const prevSinceDay = prevSince.toISOString().slice(0, 10);
 
   const [
     { data: leadsDaily },
@@ -43,17 +65,19 @@ export default async function AnalyticsPage({
     { data: campaigns },
     { data: campaignRows },
     { data: campaignDaily },
+    { data: prevLeadsDaily },
+    { data: prevViewsDaily },
   ] = await Promise.all([
     supabase
       .from('leads_daily_counts')
       .select('day, leads_count, won_count')
       .eq('workspace_id', workspaceId)
-      .gte('day', sinceIso.slice(0, 10)),
+      .gte('day', sinceDay),
     supabase
       .from('page_views_daily_counts')
       .select('day, views_count')
       .eq('workspace_id', workspaceId)
-      .gte('day', sinceIso.slice(0, 10)),
+      .gte('day', sinceDay),
     supabase
       .from('leads')
       .select('id, source, status, campaign_id')
@@ -65,7 +89,19 @@ export default async function AnalyticsPage({
       .from('campaign_daily_leads_counts')
       .select('campaign_id, day, leads_count')
       .eq('workspace_id', workspaceId)
-      .gte('day', sinceIso.slice(0, 10)),
+      .gte('day', sinceDay),
+    supabase
+      .from('leads_daily_counts')
+      .select('leads_count, won_count')
+      .eq('workspace_id', workspaceId)
+      .gte('day', prevSinceDay)
+      .lt('day', sinceDay),
+    supabase
+      .from('page_views_daily_counts')
+      .select('views_count')
+      .eq('workspace_id', workspaceId)
+      .gte('day', prevSinceDay)
+      .lt('day', sinceDay),
   ]);
 
   // Build a complete day-by-day series (filling gaps with 0) rather
@@ -89,7 +125,12 @@ export default async function AnalyticsPage({
   const totalLeads = leadsInRange?.length ?? 0;
   const totalWon = (leadsInRange ?? []).filter((l) => l.status === 'won').length;
   const totalContacted = (leadsInRange ?? []).filter((l) => l.status !== 'new').length;
-  const conversionRate = totalViews > 0 ? ((totalLeads / totalViews) * 100).toFixed(1) : null;
+  const conversionRate = totalViews > 0 ? Number(((totalLeads / totalViews) * 100).toFixed(1)) : null;
+
+  const prevTotalViews = (prevViewsDaily ?? []).reduce((sum, d) => sum + d.views_count, 0);
+  const prevTotalLeads = (prevLeadsDaily ?? []).reduce((sum, d) => sum + d.leads_count, 0);
+  const prevTotalWon = (prevLeadsDaily ?? []).reduce((sum, d) => sum + d.won_count, 0);
+  const prevConversionRate = prevTotalViews > 0 ? (prevTotalLeads / prevTotalViews) * 100 : null;
 
   const sourceCounts = new Map<string, number>();
   for (const lead of leadsInRange ?? []) {
@@ -149,121 +190,128 @@ export default async function AnalyticsPage({
     campaignTrendData.push(point);
   }
 
-
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-ink">التحليلات</h1>
-          <p className="text-sm text-ink-muted">أداء صفحاتك وحملاتك خلال الفترة المحددة.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex gap-1 rounded-md border border-border bg-surface p-1">
-            {RANGE_OPTIONS.map((opt) => (
-              <Link
-                key={opt.value}
-                href={`/analytics?range=${opt.value}`}
-                className={`rounded px-3 py-1.5 text-sm font-medium ${
-                  validRange === Number(opt.value)
-                    ? 'bg-brand-50 text-brand-700'
-                    : 'text-ink-muted hover:text-ink'
-                }`}
-              >
-                {opt.label}
-              </Link>
-            ))}
-          </div>
-          <RefreshButton />
-          <a
-            href={`/api/exports/analytics?range=${validRange}`}
-            className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-ink hover:bg-surface-subtle"
-          >
-            <Download size={16} />
-            تصدير CSV
-          </a>
-        </div>
-      </div>
+      <PageHeader
+        title="التحليلات"
+        description="أداء صفحاتك وحملاتك خلال الفترة المحددة، مقارنة بالفترة السابقة لها."
+        actions={
+          <>
+            <div role="tablist" className="flex gap-1 rounded-lg bg-surface-sunken p-1">
+              {RANGE_OPTIONS.map((opt) => (
+                <Link
+                  key={opt.value}
+                  href={`/analytics?range=${opt.value}`}
+                  role="tab"
+                  aria-selected={validRange === Number(opt.value)}
+                  className={cn(
+                    'rounded-md px-3 py-1.5 text-body-sm font-medium transition-all duration-fast',
+                    validRange === Number(opt.value) ? 'bg-surface text-ink shadow-subtle' : 'text-ink-muted hover:text-ink'
+                  )}
+                >
+                  {opt.label}
+                </Link>
+              ))}
+            </div>
+            <RefreshButton />
+            <a href={`/api/exports/analytics?range=${validRange}`}>
+              <Button variant="secondary" size="sm">
+                <Download size={15} />
+                تصدير CSV
+              </Button>
+            </a>
+          </>
+        }
+      />
 
       <PageGuide guideKey="analytics" title={ANALYTICS_GUIDE.title} steps={ANALYTICS_GUIDE.steps} initiallyDismissed={guideDismissed} />
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-        <Stat label="الزيارات" value={totalViews} />
-        <Stat label="العملاء المحتملون" value={totalLeads} />
-        <Stat label="عمليات البيع" value={totalWon} />
-        <Stat label="معدل التحويل" value={conversionRate ? `${conversionRate}%` : '—'} />
-        <Stat label="تكلفة العميل المحتمل" value={costPerLead ? costPerLead : '—'} />
-      </div>
-
-      <div className="rounded-lg border border-border bg-surface p-4 shadow-subtle">
-        <h2 className="mb-3 text-sm font-semibold text-ink">قمع التحويل (Funnel)</h2>
-        <FunnelChart
-          stages={[
-            { label: 'الزيارات', value: totalViews },
-            { label: 'العملاء المحتملون (نماذج)', value: totalLeads },
-            { label: 'تم التواصل', value: totalContacted },
-            { label: 'عمليات البيع', value: totalWon },
-          ]}
+        <StatCard icon={Eye} label="الزيارات" value={totalViews.toLocaleString('ar-SA')} trend={pctChange(totalViews, prevTotalViews)} />
+        <StatCard icon={Users} label="العملاء المحتملون" value={totalLeads.toLocaleString('ar-SA')} trend={pctChange(totalLeads, prevTotalLeads)} />
+        <StatCard icon={Trophy} label="عمليات البيع" value={totalWon.toLocaleString('ar-SA')} trend={pctChange(totalWon, prevTotalWon)} />
+        <StatCard
+          icon={TrendingUp}
+          label="معدل التحويل"
+          value={conversionRate !== null ? `${conversionRate}%` : '—'}
+          trend={conversionRate !== null && prevConversionRate !== null ? Math.round(conversionRate - prevConversionRate) : undefined}
         />
+        <StatCard icon={Wallet} label="تكلفة العميل المحتمل" value={costPerLead ?? '—'} />
       </div>
 
-      <div className="rounded-lg border border-border bg-surface p-4 shadow-subtle">
-        <h2 className="mb-3 text-sm font-semibold text-ink">الزيارات مقابل العملاء المحتملين</h2>
-        {totalViews === 0 && totalLeads === 0 ? (
-          <p className="py-10 text-center text-sm text-ink-faint">
-            لا توجد بيانات كافية بعد لهذه الفترة. انشر صفحة هبوط وشارك رابطها لتبدأ برؤية الأرقام.
-          </p>
-        ) : (
-          <TrendChart data={trendData} />
-        )}
+      {/* Desktop grid: funnel gets 1/3, the time-series trend gets 2/3
+          since it needs horizontal room for daily labels — this pairing
+          (Phase 1 finding: everything used to stack in one column even
+          on wide screens) replaces 5 consecutive full-width cards. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-1">
+          <CardHeader title="قمع التحويل" action={<Filter size={16} className="text-ink-faint" />} />
+          <FunnelChart
+            stages={[
+              { label: 'الزيارات', value: totalViews },
+              { label: 'العملاء المحتملون (نماذج)', value: totalLeads },
+              { label: 'تم التواصل', value: totalContacted },
+              { label: 'عمليات البيع', value: totalWon },
+            ]}
+          />
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader title="الزيارات مقابل العملاء المحتملين" action={<LineChartIcon size={16} className="text-ink-faint" />} />
+          {totalViews === 0 && totalLeads === 0 ? (
+            <p className="py-10 text-center text-body-sm text-ink-faint">
+              لا توجد بيانات كافية بعد لهذه الفترة. انشر صفحة هبوط وشارك رابطها لتبدأ برؤية الأرقام.
+            </p>
+          ) : (
+            <TrendChart data={trendData} />
+          )}
+        </Card>
       </div>
 
-      <div className="rounded-lg border border-border bg-surface p-4 shadow-subtle">
-        <h2 className="mb-3 text-sm font-semibold text-ink">مصادر العملاء المحتملين</h2>
-        {sourceData.length === 0 ? (
-          <p className="py-10 text-center text-sm text-ink-faint">لا توجد بيانات مصادر بعد.</p>
-        ) : (
-          <SourceBreakdownChart data={sourceData} />
-        )}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader title="مصادر العملاء المحتملين" action={<PieChart size={16} className="text-ink-faint" />} />
+          {sourceData.length === 0 ? (
+            <p className="py-10 text-center text-body-sm text-ink-faint">لا توجد بيانات مصادر بعد.</p>
+          ) : (
+            <SourceBreakdownChart data={sourceData} />
+          )}
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="العملاء المحتملون حسب الحملة"
+            description="خلال الفترة المختارة أعلاه"
+            action={<Megaphone size={16} className="text-ink-faint" />}
+          />
+          {campaignData.length === 0 ? (
+            <p className="py-10 text-center text-body-sm text-ink-faint">لا توجد حملات بعد.</p>
+          ) : (
+            <CampaignBreakdownChart data={campaignData} />
+          )}
+        </Card>
       </div>
 
-      <div className="rounded-lg border border-border bg-surface p-4 shadow-subtle">
-        <h2 className="mb-1 text-sm font-semibold text-ink">العملاء المحتملون حسب الحملة</h2>
-        <p className="mb-3 text-xs text-ink-faint">خلال الفترة المختارة أعلاه</p>
-        {campaignData.length === 0 ? (
-          <p className="py-10 text-center text-sm text-ink-faint">لا توجد حملات بعد.</p>
-        ) : (
-          <CampaignBreakdownChart data={campaignData} />
-        )}
-      </div>
-
-      <div className="rounded-lg border border-border bg-surface p-4 shadow-subtle">
-        <h2 className="mb-1 text-sm font-semibold text-ink">اتجاه العملاء المحتملين يوميًا لكل حملة</h2>
-        <p className="mb-3 text-xs text-ink-faint">
-          أعلى {topCampaignNames.length} حملات من حيث عدد العملاء المحتملين خلال هذه الفترة
-        </p>
+      <Card>
+        <CardHeader
+          title="اتجاه العملاء المحتملين يوميًا لكل حملة"
+          description={`أعلى ${topCampaignNames.length} حملات من حيث عدد العملاء المحتملين خلال هذه الفترة`}
+          action={<GitCommitHorizontal size={16} className="text-ink-faint" />}
+        />
         {topCampaignNames.length === 0 ? (
-          <p className="py-10 text-center text-sm text-ink-faint">
+          <p className="py-10 text-center text-body-sm text-ink-faint">
             لا توجد بيانات كافية بعد لعرض اتجاه يومي لكل حملة.
           </p>
         ) : (
           <CampaignTrendChart data={campaignTrendData} campaignNames={topCampaignNames} />
         )}
-      </div>
+      </Card>
 
       {costPerLead === null && (
         <Badge tone="neutral" className="w-fit">
           تكلفة العميل المحتمل تظهر بعد إضافة ميزانية لحملاتك وربطها بصفحات الهبوط
         </Badge>
       )}
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-lg border border-border bg-surface p-4 shadow-subtle">
-      <p className="text-xs text-ink-muted">{label}</p>
-      <p className="mt-1 text-xl font-semibold text-ink">{value}</p>
     </div>
   );
 }

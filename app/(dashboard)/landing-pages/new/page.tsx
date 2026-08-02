@@ -1,5 +1,6 @@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import { TEMPLATES } from '@/lib/landing-pages/templates';
 import { createLandingPageAction } from '../actions';
 import { requireWorkspace } from '@/lib/workspace';
@@ -17,43 +18,44 @@ export default async function NewLandingPagePage({
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="mb-1 text-xl font-semibold text-ink">صفحة هبوط جديدة</h1>
-      <p className="mb-4 text-sm text-ink-muted">اختر قالبًا مناسبًا لنشاطك، ويمكنك تعديل كل شيء لاحقًا.</p>
+      <PageHeader
+        title="صفحة هبوط جديدة"
+        description="اختر قالبًا مناسبًا لنشاطك، ويمكنك تعديل كل شيء لاحقًا."
+        className="mb-6"
+      />
 
-      <div className="mb-6">
-        <PageGuide guideKey="templates" title={TEMPLATES_GUIDE.title} steps={TEMPLATES_GUIDE.steps} initiallyDismissed={guideDismissed} />
-      </div>
+      <PageGuide guideKey="templates" title={TEMPLATES_GUIDE.title} steps={TEMPLATES_GUIDE.steps} initiallyDismissed={guideDismissed} />
 
       {searchParams.error && (
-        <div className="mb-4 rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
+        <div className="mt-4 rounded-md border border-danger/30 bg-danger-50 px-3 py-2 text-body-sm text-danger">
           {searchParams.error === 'plan_limit_reached'
-            ? 'وصلت للحد الأقصى لعدد صفحات الهبوط في باقتك الحالية. قم بترقية الباقة من الإعدادات لإضافة المزيد.'
+            ? 'وصلت للحد الأقصى لعدد صفحات الهبوط في باقتك الحالية. قم بترقية الباقة من مساحة العمل.'
             : 'تعذر إنشاء الصفحة. تأكد من إدخال عنوان صالح.'}
         </div>
       )}
 
-      <form action={createLandingPageAction} className="flex flex-col gap-5">
+      <form action={createLandingPageAction} className="mt-6 flex flex-col gap-5">
         <Input name="title" label="عنوان الصفحة" placeholder="مثال: عرض افتتاح الفرع الجديد" required />
 
         <fieldset>
-          <legend className="mb-2 text-sm font-medium text-ink">القالب</legend>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <legend className="mb-2 text-body-sm font-medium text-ink">القالب</legend>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {TEMPLATES.map((template, i) => (
               <label
                 key={template.id}
-                className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-3 text-start has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50"
+                className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-surface p-4 text-start shadow-subtle transition-all duration-fast has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:shadow-glow hover:border-border-strong"
               >
                 <input
                   type="radio"
                   name="template"
                   value={template.id}
                   defaultChecked={i === 0}
-                  className="mt-1"
+                  className="mt-1 accent-brand-500"
                   required
                 />
                 <span>
-                  <span className="block text-sm font-medium text-ink">{template.label}</span>
-                  <span className="block text-xs text-ink-muted">{template.hint}</span>
+                  <span className="block text-body-sm font-semibold text-ink">{template.label}</span>
+                  <span className="mt-0.5 block text-caption text-ink-muted">{template.hint}</span>
                 </span>
               </label>
             ))}

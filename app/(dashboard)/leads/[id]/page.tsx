@@ -1,10 +1,12 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ChevronRight } from 'lucide-react';
+import { Phone, MessageCircle, Mail, StickyNote, History, CalendarClock } from 'lucide-react';
 import { requireWorkspace } from '@/lib/workspace';
 import { hasFeature } from '@/lib/plans/constants';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader } from '@/components/ui/card';
+import { Avatar } from '@/components/ui/avatar';
 import { ACTIVITY_LABELS, LEAD_STATUS_LABELS, LEAD_STATUS_TONE } from '@/lib/leads/constants';
+import { digitsOnly, whatsAppLink } from '@/lib/utils';
 import { StatusSelect } from './status-select';
 import { NoteForm } from './note-form';
 import { FollowUpForm, CompleteFollowUpButton } from './follow-up-form';
@@ -44,97 +46,118 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
   const pendingFollowUps = (followUps ?? []).filter((f) => !f.completed_at);
   const pastFollowUps = (followUps ?? []).filter((f) => f.completed_at);
 
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
   return (
     <div className="flex flex-col gap-6">
-      <Link href="/leads" className="flex w-fit items-center gap-1 text-sm text-ink-muted hover:text-ink">
-        {/* chevron points "back" — mirrors correctly since icon-flip is applied in RTL */}
-        <ChevronRight size={16} className="icon-flip" />
-        العودة إلى العملاء المحتملين
-      </Link>
-
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-        <div>
-          <h1 className="text-xl font-semibold text-ink">{lead.full_name}</h1>
-          <p className="text-sm text-ink-muted">
-            {lead.phone ?? 'لا يوجد رقم هاتف'} · {lead.email ?? 'لا يوجد بريد إلكتروني'}
-          </p>
-          <Badge tone={LEAD_STATUS_TONE[lead.status]} className="mt-2">
-            {LEAD_STATUS_LABELS[lead.status]}
-          </Badge>
-          <div className="mt-3">
-            {hasFeature(plan, 'tags') && <TagEditor leadId={lead.id} initialTags={lead.tags ?? []} />}
-          </div>
-        </div>
-        <div className="w-full sm:w-56">
-          <StatusSelect leadId={lead.id} status={lead.status} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Notes */}
-        <section className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
-          <h2 className="text-sm font-semibold text-ink">الملاحظات</h2>
-          <NoteForm leadId={lead.id} />
-          <div className="flex flex-col gap-3">
-            {(notes ?? []).length === 0 && (
-              <p className="text-sm text-ink-faint">لا توجد ملاحظات بعد.</p>
-            )}
-            {(notes ?? []).map((note) => (
-              <div key={note.id} className="rounded-md bg-surface-subtle p-3 text-sm">
-                <p className="text-ink">{note.body}</p>
-                <p className="mt-1 text-xs text-ink-faint">
-                  {new Date(note.created_at).toLocaleString('ar-SA')}
-                </p>
+      {/* Profile header — the previous manual "back to leads" link was
+          removed here since the Phase 3 breadcrumb bar in the header
+          now provides that wayfinding on every page, so keeping both
+          was redundant. */}
+      <Card>
+        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
+          <div className="flex items-start gap-4">
+            <Avatar name={lead.full_name} size="lg" />
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-title-lg text-ink">{lead.full_name}</h1>
+                <Badge tone={LEAD_STATUS_TONE[lead.status]}>{LEAD_STATUS_LABELS[lead.status]}</Badge>
               </div>
-            ))}
-          </div>
-        </section>
 
-        {/* Activity timeline */}
-        <section className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
-          <h2 className="text-sm font-semibold text-ink">سجل النشاط</h2>
-          <ol className="flex flex-col gap-3">
-            {(activities ?? []).map((activity) => (
-              <li key={activity.id} className="flex items-start gap-3 text-sm">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />
-                <div>
-                  <p className="text-ink">{ACTIVITY_LABELS[activity.type] ?? activity.type}</p>
-                  <p className="text-xs text-ink-faint">
-                    {new Date(activity.created_at).toLocaleString('ar-SA')}
-                  </p>
+              {/* Quick contact actions — the single most important gap
+                  found in Phase 1: phone/email were plain unclickable
+                  text, requiring a manual copy-paste to actually reach
+                  a lead. */}
+              <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                {lead.phone ? (
+                  <>
+                    <a
+                      href={`tel:${digitsOnly(lead.phone)}`}
+                      className="flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 text-body-sm font-medium text-ink transition-colors hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700"
+                    >
+                      <Phone size={14} />
+                      {lead.phone}
+                    </a>
+                    <a
+                      href={whatsAppLink(lead.phone)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="تواصل عبر واتساب"
+                      className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface text-ink-faint transition-colors hover:border-success/30 hover:bg-success-50 hover:text-success"
+                    >
+                      <MessageCircle size={15} />
+                    </a>
+                  </>
+                ) : (
+                  <span className="text-body-sm text-ink-faint">لا يوجد رقم هاتف</span>
+                )}
+                {lead.email ? (
+                  <a
+                    href={`mailto:${lead.email}`}
+                    className="flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 text-body-sm font-medium text-ink transition-colors hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700"
+                  >
+                    <Mail size={14} />
+                    {lead.email}
+                  </a>
+                ) : (
+                  <span className="text-body-sm text-ink-faint">لا يوجد بريد إلكتروني</span>
+                )}
+              </div>
+
+              {hasFeature(plan, 'tags') && (
+                <div className="mt-3">
+                  <TagEditor leadId={lead.id} initialTags={lead.tags ?? []} />
                 </div>
-              </li>
-            ))}
-            {(activities ?? []).length === 0 && (
-              <p className="text-sm text-ink-faint">لا يوجد سجل نشاط بعد.</p>
-            )}
-          </ol>
-        </section>
-      </div>
+              )}
+            </div>
+          </div>
+          <div className="w-full sm:w-56">
+            <StatusSelect leadId={lead.id} status={lead.status} />
+          </div>
+        </div>
+      </Card>
 
-      {/* Follow-ups */}
-      <section className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
-        <h2 className="text-sm font-semibold text-ink">المتابعات</h2>
+      {/* Follow-ups — moved above Notes/Activity: scheduling and
+          completing the next touch-point is the highest-frequency
+          action a salesperson takes on this page. */}
+      <Card>
+        <CardHeader title="المتابعات" action={<CalendarClock size={16} className="text-ink-faint" />} />
         <FollowUpForm leadId={lead.id} />
 
-        <div className="flex flex-col gap-2">
-          {pendingFollowUps.map((f) => (
-            <div key={f.id} className="flex items-center justify-between rounded-md bg-surface-subtle p-3 text-sm">
-              <div>
-                <p className="text-ink">{new Date(f.due_at).toLocaleString('ar-SA')}</p>
-                {f.note && <p className="text-xs text-ink-muted">{f.note}</p>}
+        <div className="mt-4 flex flex-col gap-2">
+          {pendingFollowUps.map((f) => {
+            const due = new Date(f.due_at);
+            const overdue = due < new Date();
+            const dueToday = !overdue && due < new Date(todayStart.getTime() + 86400000);
+            return (
+              <div
+                key={f.id}
+                className="flex items-center justify-between gap-3 rounded-md bg-surface-subtle p-3"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-body-sm font-medium text-ink">{due.toLocaleString('ar-SA')}</p>
+                    {(overdue || dueToday) && (
+                      <Badge tone={overdue ? 'danger' : 'warning'} size="sm">
+                        {overdue ? 'متأخر' : 'اليوم'}
+                      </Badge>
+                    )}
+                  </div>
+                  {f.note && <p className="mt-0.5 truncate text-caption text-ink-muted">{f.note}</p>}
+                </div>
+                <CompleteFollowUpButton followUpId={f.id} leadId={lead.id} />
               </div>
-              <CompleteFollowUpButton followUpId={f.id} leadId={lead.id} />
-            </div>
-          ))}
+            );
+          })}
           {pendingFollowUps.length === 0 && (
-            <p className="text-sm text-ink-faint">لا توجد متابعات مجدولة.</p>
+            <p className="text-body-sm text-ink-faint">لا توجد متابعات مجدولة.</p>
           )}
         </div>
 
         {pastFollowUps.length > 0 && (
-          <details className="text-sm">
-            <summary className="cursor-pointer text-ink-muted">
+          <details className="mt-3 text-body-sm">
+            <summary className="cursor-pointer select-none text-ink-muted transition-colors hover:text-ink">
               المتابعات المكتملة ({pastFollowUps.length})
             </summary>
             <div className="mt-2 flex flex-col gap-2">
@@ -146,7 +169,52 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
             </div>
           </details>
         )}
-      </section>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Notes */}
+        <Card>
+          <CardHeader title="الملاحظات" action={<StickyNote size={16} className="text-ink-faint" />} />
+          <NoteForm leadId={lead.id} />
+          <div className="mt-4 flex flex-col gap-3">
+            {(notes ?? []).length === 0 && (
+              <p className="text-body-sm text-ink-faint">لا توجد ملاحظات بعد.</p>
+            )}
+            {(notes ?? []).map((note) => (
+              <div key={note.id} className="rounded-md bg-surface-subtle p-3">
+                <p className="text-body-sm text-ink">{note.body}</p>
+                <p className="mt-1 text-caption text-ink-faint">
+                  {new Date(note.created_at).toLocaleString('ar-SA')}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Activity timeline */}
+        <Card>
+          <CardHeader title="سجل النشاط" action={<History size={16} className="text-ink-faint" />} />
+          {(activities ?? []).length === 0 ? (
+            <p className="text-body-sm text-ink-faint">لا يوجد سجل نشاط بعد.</p>
+          ) : (
+            <ol className="relative flex flex-col gap-4 ps-1">
+              {/* connecting line */}
+              <span className="absolute bottom-1 start-[7px] top-1 w-px bg-border" aria-hidden />
+              {(activities ?? []).map((activity) => (
+                <li key={activity.id} className="relative flex items-start gap-3 ps-5">
+                  <span className="absolute start-0 top-1 h-3.5 w-3.5 shrink-0 rounded-full border-2 border-surface bg-brand-500" />
+                  <div className="min-w-0">
+                    <p className="text-body-sm text-ink">{ACTIVITY_LABELS[activity.type] ?? activity.type}</p>
+                    <p className="text-caption text-ink-faint">
+                      {new Date(activity.created_at).toLocaleString('ar-SA')}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }

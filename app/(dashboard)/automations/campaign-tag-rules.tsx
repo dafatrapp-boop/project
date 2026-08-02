@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Plus, Trash2, Tag as TagIcon } from 'lucide-react';
+import { Button, IconButton } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/toast';
 import { upsertAutomationRuleAction, toggleAutomationRuleAction, deleteAutomationRuleAction } from './actions';
 import { AUTOMATION_RULE_LABELS, AUTOMATION_RULE_DESCRIPTIONS } from '@/lib/automation/constants';
@@ -43,34 +45,42 @@ export function CampaignTagRules({
   }
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4 shadow-subtle">
-      <h3 className="mb-1 text-sm font-semibold text-ink">{AUTOMATION_RULE_LABELS.campaign_tag}</h3>
-      <p className="mb-4 text-xs text-ink-muted">{AUTOMATION_RULE_DESCRIPTIONS.campaign_tag}</p>
+    <Card className="flex flex-col gap-3">
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-600">
+          <TagIcon size={15} />
+        </span>
+        <h3 className="text-body-sm font-semibold text-ink">{AUTOMATION_RULE_LABELS.campaign_tag}</h3>
+      </div>
+      <p className="text-caption text-ink-muted">{AUTOMATION_RULE_DESCRIPTIONS.campaign_tag}</p>
 
       {rules.length > 0 && (
-        <div className="mb-4 flex flex-col gap-2">
+        <div className="flex flex-col gap-2">
           {rules.map((r) => (
-            <div key={r.id} className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm">
-              <span>
-                {campaignName(r.config.campaign_id)} <span className="text-ink-faint">←</span> <Badge tone="neutral">{r.config.tag}</Badge>
+            <div key={r.id} className="flex items-center justify-between gap-2 rounded-md bg-surface-subtle px-3 py-2 text-body-sm">
+              <span className="flex items-center gap-1.5">
+                {campaignName(r.config.campaign_id)}
+                <span className="text-ink-faint">←</span>
+                <Badge tone="neutral" size="sm">{r.config.tag}</Badge>
               </span>
               <div className="flex items-center gap-2">
-                <label className="flex items-center gap-1.5 text-xs">
-                  <input
-                    type="checkbox"
-                    defaultChecked={r.enabled}
-                    onChange={(e) => startTransition(() => toggleAutomationRuleAction(r.id, e.target.checked))}
-                    className="h-3.5 w-3.5"
-                  />
-                  مفعّلة
-                </label>
-                <button
-                  onClick={() => startTransition(() => deleteAutomationRuleAction(r.id))}
-                  className="rounded p-1 text-danger hover:bg-danger/10"
-                  aria-label="حذف"
+                <Switch
+                  checked={r.enabled}
+                  disabled={pending}
+                  onChange={(next) => startTransition(() => toggleAutomationRuleAction(r.id, next))}
+                />
+                <IconButton
+                  variant="ghost"
+                  size="sm"
+                  aria-label="حذف القاعدة"
+                  className="hover:bg-danger-50 hover:text-danger"
+                  onClick={() => {
+                    if (!window.confirm('هل تريد حذف قاعدة الوسم التلقائي هذه؟')) return;
+                    startTransition(() => deleteAutomationRuleAction(r.id));
+                  }}
                 >
-                  <Trash2 size={14} />
-                </button>
+                  <Trash2 size={13} />
+                </IconButton>
               </div>
             </div>
           ))}
@@ -78,7 +88,7 @@ export function CampaignTagRules({
       )}
 
       {campaigns.length === 0 ? (
-        <p className="text-xs text-ink-faint">أنشئ حملة أولًا لتتمكن من ربطها بوسم تلقائي.</p>
+        <p className="text-caption text-ink-faint">أنشئ حملة أولًا لتتمكن من ربطها بوسم تلقائي.</p>
       ) : (
         <div className="flex flex-wrap items-end gap-3">
           <Select label="الحملة" value={campaignId} onChange={(e) => setCampaignId(e.target.value)} className="min-w-[10rem]">
@@ -93,6 +103,6 @@ export function CampaignTagRules({
           </Button>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

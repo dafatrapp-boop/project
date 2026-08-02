@@ -5,6 +5,8 @@ import { KanbanBoard } from './kanban-board';
 import { PageGuide } from '@/components/guide/page-guide';
 import { getGuideDismissed } from '@/lib/guide/state';
 import { PIPELINE_GUIDE } from '@/lib/guide/content';
+import { PageHeader } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
 
 export default async function PipelinePage() {
   const { supabase, workspaceId, plan, user } = await requireWorkspace();
@@ -21,16 +23,18 @@ export default async function PipelinePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-ink">Pipeline المبيعات</h1>
-          <p className="text-sm text-ink-muted">اسحب البطاقة لتغيير حالة العميل (أو استخدم القائمة على الجوال).</p>
-        </div>
-        <Link href="/leads" className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-ink hover:bg-surface-subtle">
-          <List size={16} />
-          عرض القائمة
-        </Link>
-      </div>
+      <PageHeader
+        title="Pipeline المبيعات"
+        description="اسحب البطاقة لتغيير حالة العميل، أو استخدم قائمة النقل السريع على كل بطاقة."
+        actions={
+          <Link href="/leads">
+            <Button variant="secondary" size="sm">
+              <List size={15} />
+              عرض القائمة
+            </Button>
+          </Link>
+        }
+      />
 
       <PageGuide guideKey="pipeline" title={PIPELINE_GUIDE.title} steps={PIPELINE_GUIDE.steps} initiallyDismissed={guideDismissed} />
 

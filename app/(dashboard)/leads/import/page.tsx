@@ -1,9 +1,10 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import Link from 'next/link';
-import { ChevronRight, Upload } from 'lucide-react';
+import { Upload, FileText, Download, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
 import { importLeadsCsvAction, type ImportResult } from './actions';
 
 const SAMPLE_CSV = 'name,phone,email,source\nأحمد محمد,+966501234567,ahmed@example.com,instagram\n';
@@ -12,6 +13,7 @@ export default function ImportLeadsPage() {
   const formRef = useRef<HTMLFormElement>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [fileName, setFileName] = useState<string | null>(null);
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);
@@ -19,7 +21,10 @@ export default function ImportLeadsPage() {
     const res = await importLeadsCsvAction(formData);
     setResult(res);
     setLoading(false);
-    if (res.ok) formRef.current?.reset();
+    if (res.ok) {
+      formRef.current?.reset();
+      setFileName(null);
+    }
   }
 
   function downloadSample() {
@@ -34,53 +39,63 @@ export default function ImportLeadsPage() {
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6">
-      <Link href="/leads" className="flex w-fit items-center gap-1 text-sm text-ink-muted hover:text-ink">
-        <ChevronRight size={16} className="icon-flip" />
-        العودة إلى العملاء المحتملين
-      </Link>
+      <PageHeader
+        title="استيراد عملاء من CSV"
+        description="الأعمدة المدعومة: الاسم (مطلوب)، الهاتف، البريد الإلكتروني، المصدر."
+      />
 
-      <div>
-        <h1 className="text-xl font-semibold text-ink">استيراد عملاء من CSV</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          الأعمدة المدعومة: الاسم (مطلوب)، الهاتف، البريد الإلكتروني، المصدر.
-        </p>
-      </div>
-
-      <button onClick={downloadSample} className="self-start text-sm font-medium text-brand-600 hover:underline">
-        تنزيل نموذج CSV
-      </button>
-
-      {result && (
-        <div
-          className={`rounded-md border px-3 py-2 text-sm ${
-            result.ok
-              ? 'border-success/30 bg-success/5 text-success'
-              : 'border-danger/30 bg-danger/5 text-danger'
-          }`}
+      <Card>
+        <button
+          onClick={downloadSample}
+          className="mb-4 flex items-center gap-1.5 text-body-sm font-medium text-brand-600 transition-colors hover:text-brand-700"
         >
-          {result.ok
-            ? `تم استيراد ${result.imported} عميلًا بنجاح.${result.skipped ? ` تم تخطي ${result.skipped} صف غير صالح.` : ''}`
-            : result.error}
-        </div>
-      )}
+          <Download size={14} />
+          تنزيل نموذج CSV
+        </button>
 
-      <form ref={formRef} action={handleSubmit} className="flex flex-col gap-3">
-        <input
-          type="file"
-          name="file"
-          accept=".csv,text/csv"
-          required
-          className="rounded-md border border-dashed border-border bg-surface-subtle p-4 text-sm text-ink-muted"
-        />
-        <Button type="submit" disabled={loading}>
-          <Upload size={16} />
-          {loading ? 'جارٍ الاستيراد...' : 'استيراد'}
-        </Button>
-      </form>
+        {result && (
+          <div
+            className={`mb-4 flex items-start gap-2.5 rounded-md border px-3.5 py-3 text-body-sm ${
+              result.ok ? 'border-success/20 bg-success-50 text-success' : 'border-danger/20 bg-danger-50 text-danger'
+            }`}
+            role="status"
+          >
+            {result.ok ? <CheckCircle2 size={16} className="mt-0.5 shrink-0" /> : <XCircle size={16} className="mt-0.5 shrink-0" />}
+            <span>
+              {result.ok
+                ? `تم استيراد ${result.imported} عميلًا بنجاح.${result.skipped ? ` تم تخطي ${result.skipped} صف غير صالح.` : ''}`
+                : result.error}
+            </span>
+          </div>
+        )}
 
-      <p className="text-xs text-ink-faint">
-        حد أقصى 500 صف لكل ملف و2 ميجابايت لكل استيراد. لا يوجد فحص تكرار أثناء الاستيراد الجماعي —
-        استخدم صفحة إضافة عميل يدويًا للاستفادة من كشف التكرار.
+        <form ref={formRef} action={handleSubmit} className="flex flex-col gap-3">
+          <label className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed border-border bg-surface-subtle p-6 text-center transition-colors hover:border-brand-300 hover:bg-brand-50/40">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface text-ink-faint">
+              <FileText size={18} />
+            </span>
+            <span className="text-body-sm font-medium text-ink">
+              {fileName ?? 'اختر ملف CSV أو اسحبه هنا'}
+            </span>
+            <span className="text-caption text-ink-faint">حد أقصى 500 صف و2 ميجابايت</span>
+            <input
+              type="file"
+              name="file"
+              accept=".csv,text/csv"
+              required
+              onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
+              className="sr-only"
+            />
+          </label>
+          <Button type="submit" loading={loading} disabled={loading}>
+            <Upload size={16} />
+            {loading ? 'جارٍ الاستيراد...' : 'استيراد'}
+          </Button>
+        </form>
+      </Card>
+
+      <p className="text-caption text-ink-faint">
+        لا يوجد فحص تكرار أثناء الاستيراد الجماعي — استخدم صفحة إضافة عميل يدويًا للاستفادة من كشف التكرار.
       </p>
     </div>
   );

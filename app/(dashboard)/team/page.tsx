@@ -1,5 +1,7 @@
 import { requireWorkspace } from '@/lib/workspace';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
 import { PLAN_LABELS, PLAN_LIMITS, type Plan } from '@/lib/plans/constants';
 import { ROLE_LABELS } from './constants';
 import { MemberRow } from './member-row';
@@ -65,34 +67,24 @@ export default async function TeamPage({
   return (
     <div className="flex flex-col gap-6">
       <WorkspaceTabs />
-      <div>
-        <h1 className="text-xl font-semibold text-ink">الفريق والباقة</h1>
-        <p className="text-sm text-ink-muted">إدارة أعضاء الفريق وصلاحياتهم، ومتابعة حدود باقتك.</p>
-      </div>
+      <PageHeader title="الفريق والباقة" description="إدارة أعضاء الفريق وصلاحياتهم، ومتابعة حدود باقتك." />
 
       {searchParams.error && (
-        <div className="rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
+        <div className="rounded-md border border-danger/30 bg-danger-50 px-3 py-2 text-body-sm text-danger">
           {ERROR_MESSAGES[searchParams.error] ?? 'حدث خطأ. حاول مرة أخرى.'}
         </div>
       )}
       {searchParams.success === 'invited' && (
-        <div className="rounded-md border border-success/30 bg-success/5 px-3 py-2 text-sm text-success">
+        <div className="rounded-md border border-success/30 bg-success-50 px-3 py-2 text-body-sm text-success">
           تم إنشاء الدعوة. شارك رابط القبول مع الشخص المدعو (لا يوجد إرسال بريد تلقائي بعد).
         </div>
       )}
 
       {/* Plan section */}
-      <section className="rounded-lg border border-border bg-surface p-4 shadow-subtle">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-ink">الباقة الحالية</h2>
-          <Badge tone="brand">{PLAN_LABELS[plan]}</Badge>
-        </div>
-        <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
-          <UsageRow
-            label="صفحات الهبوط"
-            used={pagesCount ?? 0}
-            limit={limits.maxLandingPages}
-          />
+      <Card>
+        <CardHeader title="الباقة الحالية" action={<Badge tone="brand">{PLAN_LABELS[plan]}</Badge>} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <UsageRow label="صفحات الهبوط" used={pagesCount ?? 0} limit={limits.maxLandingPages} />
           <UsageRow label="أعضاء الفريق" used={(members ?? []).length} limit={limits.maxTeamMembers} />
           <UsageRow label="الحملات" used={campaignsCount ?? 0} limit={limits.maxCampaigns} />
         </div>
@@ -100,10 +92,10 @@ export default async function TeamPage({
         {role === 'owner' && (
           <div className="mt-4 border-t border-border pt-4">
             {stripeConfigured ? (
-              <UpgradeButtons hasStripeSubscription={Boolean(stripeCustomerId)} />
+              <UpgradeButtons hasStripeSubscription={Boolean(stripeCustomerId)} currentPlan={plan} />
             ) : (
               <>
-                <p className="mb-2 text-xs text-ink-faint">
+                <p className="mb-2 text-caption text-ink-faint">
                   لا يوجد نظام دفع فعلي متصل بعد (Stripe) — هذا محدد اختباري يدوي فقط لتجربة حدود كل باقة.
                   أضف مفاتيح Stripe في .env لتفعيل الدفع الحقيقي (راجع .env.example).
                 </p>
@@ -112,11 +104,14 @@ export default async function TeamPage({
             )}
           </div>
         )}
-      </section>
+      </Card>
 
       {/* Members */}
-      <section className="rounded-lg border border-border bg-surface p-4 shadow-subtle">
-        <h2 className="mb-3 text-sm font-semibold text-ink">أعضاء الفريق</h2>
+      <Card>
+        <CardHeader
+          title="أعضاء الفريق"
+          description="المالك والمشرف يمكنهما إدارة الفريق والإعدادات والباقة؛ موظف المبيعات يستخدم النظام يوميًا دون الوصول لهذه الصفحة."
+        />
         <div className="flex flex-col gap-2">
           {(members ?? []).map((m) => (
             <MemberRow
@@ -128,25 +123,25 @@ export default async function TeamPage({
             />
           ))}
         </div>
-      </section>
+      </Card>
 
       {/* Invitations (admins only) */}
       {isAdmin && (
-        <section className="rounded-lg border border-border bg-surface p-4 shadow-subtle">
-          <h2 className="mb-3 text-sm font-semibold text-ink">دعوة عضو جديد</h2>
+        <Card>
+          <CardHeader title="دعوة عضو جديد" />
           <InviteForm />
 
           {pendingInvites.length > 0 && (
             <div className="mt-5 border-t border-border pt-4">
-              <h3 className="mb-2 text-xs font-medium text-ink-muted">دعوات قيد الانتظار</h3>
+              <h3 className="mb-2 text-caption font-medium text-ink-muted">دعوات قيد الانتظار</h3>
               <div className="flex flex-col gap-2">
                 {pendingInvites.map((inv) => (
-                  <div key={inv.id} className="flex items-center justify-between rounded-md bg-surface-subtle p-2 text-sm">
+                  <div key={inv.id} className="flex items-center justify-between rounded-md bg-surface-subtle p-2 text-body-sm">
                     <div>
                       <p className="text-ink">
                         {inv.email} · {ROLE_LABELS[inv.role]}
                       </p>
-                      <p className="text-xs text-ink-faint" dir="ltr">
+                      <p className="text-caption text-ink-faint" dir="ltr">
                         /invite/{inv.token}
                       </p>
                     </div>
@@ -156,7 +151,7 @@ export default async function TeamPage({
               </div>
             </div>
           )}
-        </section>
+        </Card>
       )}
     </div>
   );
@@ -165,12 +160,21 @@ export default async function TeamPage({
 function UsageRow({ label, used, limit }: { label: string; used: number; limit: number }) {
   const isUnlimited = limit === -1;
   const overLimit = !isUnlimited && used >= limit;
+  const pct = isUnlimited ? 0 : Math.min(100, Math.round((used / Math.max(limit, 1)) * 100));
   return (
     <div className="rounded-md bg-surface-subtle p-3">
-      <p className="text-xs text-ink-muted">{label}</p>
-      <p className={`mt-1 font-medium ${overLimit ? 'text-danger' : 'text-ink'}`}>
+      <p className="text-caption text-ink-muted">{label}</p>
+      <p className={`mt-1 text-body-sm font-medium ${overLimit ? 'text-danger' : 'text-ink'}`}>
         {used} / {isUnlimited ? '∞' : limit}
       </p>
+      {!isUnlimited && (
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-border">
+          <div
+            className={`h-full rounded-full transition-[width] duration-slow ease-out ${overLimit ? 'bg-danger' : 'bg-brand-500'}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { AuthShell } from '@/components/auth/auth-shell';
 import { AuthCard } from '@/components/auth/auth-card';
 import { AuthAlert } from '@/components/auth/auth-alert';
@@ -43,10 +43,10 @@ export default function ResetPasswordPage({
 
         <form action={requestResetAction} className="flex flex-col gap-4">
           <Input name="email" type="email" label="البريد الإلكتروني" placeholder="you@example.com" required autoComplete="email" />
-          <Button type="submit" size="lg" className="mt-2 w-full">إرسال رابط الاستعادة</Button>
+          <SubmitButton size="lg" className="mt-2 w-full">إرسال رابط الاستعادة</SubmitButton>
         </form>
 
-        <p className="mt-7 text-center text-sm text-ink-muted">
+        <p className="mt-7 text-center text-body-sm text-ink-muted">
           تذكرت كلمة المرور؟{' '}
           <Link href="/login" className="font-semibold text-brand-600 transition-colors hover:text-brand-700">
             تسجيل الدخول

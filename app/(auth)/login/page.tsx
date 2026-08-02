@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { AuthShell } from '@/components/auth/auth-shell';
 import { AuthCard } from '@/components/auth/auth-card';
 import { AuthAlert } from '@/components/auth/auth-alert';
@@ -60,7 +60,7 @@ export default function LoginPage({
               نسيت كلمة المرور؟
             </Link>
           </div>
-          <Button type="submit" size="lg" className="mt-2 w-full">تسجيل الدخول</Button>
+          <SubmitButton size="lg" className="mt-2 w-full">تسجيل الدخول</SubmitButton>
         </form>
 
         <p className="mt-7 text-center text-sm text-ink-muted">

@@ -116,7 +116,7 @@ export function DropdownMenu({
             return item.href ? (
               <a
                 key={item.label}
-                ref={(el) => (itemRefs.current[i] = el)}
+                ref={(el) => { itemRefs.current[i] = el; }}
                 role="menuitem"
                 href={item.href}
                 tabIndex={-1}
@@ -128,7 +128,7 @@ export function DropdownMenu({
             ) : (
               <button
                 key={item.label}
-                ref={(el) => (itemRefs.current[i] = el)}
+                ref={(el) => { itemRefs.current[i] = el; }}
                 role="menuitem"
                 type="button"
                 tabIndex={-1}

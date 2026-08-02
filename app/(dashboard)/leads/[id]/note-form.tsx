@@ -2,6 +2,7 @@
 
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { addNoteAction } from '../actions';
 
 export function NoteForm({ leadId }: { leadId: string }) {
@@ -16,12 +17,11 @@ export function NoteForm({ leadId }: { leadId: string }) {
       }}
       className="flex flex-col gap-2"
     >
-      <textarea
+      <Textarea
         name="body"
         required
         placeholder="أضف ملاحظة عن هذا العميل المحتمل..."
         rows={3}
-        className="w-full rounded-md border border-border bg-surface p-3 text-sm text-ink placeholder:text-ink-faint focus-visible:border-brand-500"
       />
       <Button type="submit" size="sm" className="self-end">
         إضافة ملاحظة

@@ -19,9 +19,9 @@ export function AuthCard({ title, description, children, className, align = 'sta
       )}
     >
       {title && (
-        <h1 className="mb-1.5 text-[22px] font-semibold tracking-[-0.01em] text-ink">{title}</h1>
+        <h1 className="mb-1.5 text-title-lg text-ink">{title}</h1>
       )}
-      {description && <p className="mb-7 text-[15px] leading-relaxed text-ink-muted">{description}</p>}
+      {description && <p className="mb-7 text-body-lg leading-relaxed text-ink-muted">{description}</p>}
       {title && !description && <div className="mb-7" />}
       {children}
     </div>

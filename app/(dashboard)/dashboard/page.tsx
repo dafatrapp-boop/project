@@ -1,11 +1,18 @@
 import { createClient } from '@/lib/supabase/server';
-import { Users, TrendingUp, Clock, Trophy, UserPlus, Activity as ActivityIcon, ShoppingBag } from 'lucide-react';
+import { Users, TrendingUp, Clock, Trophy, UserPlus, Activity as ActivityIcon, ShoppingBag, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { ACTIVITY_LABELS } from '@/lib/leads/constants';
 import { PageGuide } from '@/components/guide/page-guide';
 import { getGuideDismissed } from '@/lib/guide/state';
 import { DASHBOARD_GUIDE } from '@/lib/guide/content';
 import { ORDER_RELEVANT_INDUSTRIES } from '@/lib/orders/constants';
+import { PageHeader } from '@/components/ui/page-header';
+import { Card, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar } from '@/components/ui/avatar';
+import { EmptyState } from '@/components/ui/empty-state';
+import { cn } from '@/lib/utils';
 
 const WORKSPACE_ACTION_LABELS: Record<string, string> = {
   landing_page_updated: 'عدّل صفحة هبوط',
@@ -139,10 +146,17 @@ const workspaceMeta = Array.isArray(workspacesRaw) ? workspacesRaw[0] ?? null : 
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold text-ink">مرحبًا بك، {workspaceName}</h1>
-        <p className="text-sm text-ink-muted">هذه نظرة تنفيذية سريعة على أداء اليوم.</p>
-      </div>
+      <PageHeader
+        title={`مرحبًا بك، ${workspaceName}`}
+        description="نظرة تنفيذية سريعة على أداء اليوم."
+        actions={
+          <Link href="/leads">
+            <Button variant="secondary" size="sm">
+              عرض كل العملاء
+            </Button>
+          </Link>
+        }
+      />
 
       <PageGuide
         guideKey="dashboard"
@@ -152,118 +166,144 @@ const workspaceMeta = Array.isArray(workspacesRaw) ? workspacesRaw[0] ?? null : 
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-lg border border-border bg-surface p-4 shadow-subtle">
-          <div className="mb-2 flex items-center gap-2 text-ink-muted">
-            <Users size={16} />
-            <span className="text-sm">عملاء اليوم</span>
-          </div>
-          <p className="text-2xl font-semibold text-ink">{todayLeadsCount ?? 0}</p>
-          <p className="mt-1 text-xs text-ink-faint">الإجمالي: {leadsCount ?? 0}</p>
-        </div>
-
-        <div className="rounded-lg border border-border bg-surface p-4 shadow-subtle">
-          <div className="mb-2 flex items-center gap-2 text-ink-muted">
-            <TrendingUp size={16} />
-            <span className="text-sm">تحويل اليوم</span>
-          </div>
-          <p className="text-2xl font-semibold text-ink">{todayConversion !== null ? `${todayConversion}%` : '—'}</p>
-          <p className="mt-1 text-xs text-ink-faint">
-            {todayViews > 0 ? `من ${todayViews} زيارة اليوم` : 'لا توجد زيارات اليوم بعد'}
-          </p>
-        </div>
-
-        <div className="rounded-lg border border-border bg-surface p-4 shadow-subtle">
-          <div className="mb-2 flex items-center gap-2 text-ink-muted">
-            <Trophy size={16} />
-            <span className="text-sm">أفضل حملة</span>
-          </div>
-          <p className="truncate text-lg font-semibold text-ink">{bestCampaignName ?? '—'}</p>
-          <p className="mt-1 text-xs text-ink-faint">
-            {bestCampaign ? `${bestCampaign.leads_count} عميل محتمل (كل الأوقات)` : 'لا توجد حملات بعد'}
-          </p>
-        </div>
-
-        <div className="rounded-lg border border-border bg-surface p-4 shadow-subtle">
-          <div className="mb-2 flex items-center gap-2 text-ink-muted">
-            <UserPlus size={16} />
-            <span className="text-sm">عملاء جدد (بيع اليوم)</span>
-          </div>
-          <p className="text-2xl font-semibold text-ink">{todayWonCount ?? 0}</p>
-        </div>
+        <DashboardStat
+          icon={Users}
+          tone="brand"
+          label="عملاء اليوم"
+          value={todayLeadsCount ?? 0}
+          helper={`الإجمالي: ${leadsCount ?? 0}`}
+        />
+        <DashboardStat
+          icon={TrendingUp}
+          tone="success"
+          label="تحويل اليوم"
+          value={todayConversion !== null ? `${todayConversion}%` : '—'}
+          helper={todayViews > 0 ? `من ${todayViews} زيارة اليوم` : 'لا توجد زيارات اليوم بعد'}
+        />
+        <DashboardStat
+          icon={Trophy}
+          tone="warning"
+          label="أفضل حملة"
+          value={bestCampaignName ?? '—'}
+          valueClassName="truncate text-title text-ink"
+          helper={bestCampaign ? `${bestCampaign.leads_count} عميل محتمل (كل الأوقات)` : 'لا توجد حملات بعد'}
+        />
+        <DashboardStat
+          icon={UserPlus}
+          tone="info"
+          label="عملاء جدد (بيع اليوم)"
+          value={todayWonCount ?? 0}
+        />
       </div>
 
       {showOrders && orderStats && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-subtle">
-            <div className="mb-2 flex items-center gap-2 text-ink-muted">
-              <ShoppingBag size={16} />
-              <span className="text-sm">إجمالي الطلبات</span>
-            </div>
-            <p className="text-2xl font-semibold text-ink">{orderStats.total_orders}</p>
-          </div>
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-subtle">
-            <div className="mb-2 flex items-center gap-2 text-ink-muted">
-              <ShoppingBag size={16} />
-              <span className="text-sm">إجمالي المبيعات</span>
-            </div>
-            <p className="text-2xl font-semibold text-ink">{orderStats.total_sales}</p>
-          </div>
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-subtle">
-            <div className="mb-2 flex items-center gap-2 text-ink-muted">
-              <ShoppingBag size={16} />
-              <span className="text-sm">الإيراد المُحصَّل</span>
-            </div>
-            <p className="text-2xl font-semibold text-ink">{orderStats.revenue}</p>
-          </div>
+          <DashboardStat icon={ShoppingBag} tone="brand" label="إجمالي الطلبات" value={orderStats.total_orders} />
+          <DashboardStat icon={ShoppingBag} tone="success" label="إجمالي المبيعات" value={orderStats.total_sales} />
+          <DashboardStat icon={ShoppingBag} tone="info" label="الإيراد المُحصَّل" value={orderStats.revenue} />
         </div>
       )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border border-border bg-surface p-4 shadow-subtle">
-          <div className="mb-3 flex items-center gap-2 text-ink-muted">
-            <Clock size={16} />
-            <span className="text-sm font-medium">متابعات تحتاج إلى إجراء</span>
-          </div>
+        <Card>
+          <CardHeader
+            title="متابعات تحتاج إلى إجراء"
+            action={<Clock size={16} className="text-ink-faint" />}
+          />
           {(dueFollowUps ?? []).length === 0 ? (
-            <p className="text-sm text-ink-faint">لا توجد متابعات متأخرة أو مستحقة الآن.</p>
+            <EmptyState
+              icon={Clock}
+              title="لا توجد متابعات مستحقة"
+              description="كل المتابعات محدّثة الآن — عمل رائع."
+            />
           ) : (
-            <ul className="flex flex-col gap-2">
+            <ul className="flex flex-col divide-y divide-border">
               {(dueFollowUps ?? []).map((f) => {
                 const lead = f.leads as unknown as { id: string; full_name: string } | null;
+                const overdue = new Date(f.due_at) < todayStart;
                 return (
-                  <li key={f.id} className="flex items-center justify-between text-sm">
-                    <Link href={`/leads/${lead?.id}`} className="text-brand-600 hover:underline">
-                      {lead?.full_name ?? 'عميل محتمل'}
+                  <li key={f.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                    <Link href={`/leads/${lead?.id}`} className="flex items-center gap-2.5 min-w-0">
+                      <Avatar name={lead?.full_name ?? '?'} size="sm" />
+                      <span className="truncate text-body-sm font-medium text-ink hover:text-brand-600">
+                        {lead?.full_name ?? 'عميل محتمل'}
+                      </span>
                     </Link>
-                    <span className="text-ink-faint">{new Date(f.due_at).toLocaleString('ar-SA')}</span>
+                    <Badge tone={overdue ? 'danger' : 'warning'} size="sm">
+                      {overdue ? 'متأخر' : 'اليوم'}
+                    </Badge>
                   </li>
                 );
               })}
             </ul>
           )}
-        </div>
+        </Card>
 
-        <div className="rounded-lg border border-border bg-surface p-4 shadow-subtle">
-          <div className="mb-3 flex items-center gap-2 text-ink-muted">
-            <ActivityIcon size={16} />
-            <span className="text-sm font-medium">آخر النشاطات</span>
-          </div>
+        <Card>
+          <CardHeader
+            title="آخر النشاطات"
+            action={<ActivityIcon size={16} className="text-ink-faint" />}
+          />
           {feed.length === 0 ? (
-            <p className="text-sm text-ink-faint">لا يوجد نشاط بعد.</p>
+            <EmptyState icon={ActivityIcon} title="لا يوجد نشاط بعد" description="ستظهر هنا آخر التحديثات على مساحتك." />
           ) : (
-            <ul className="flex flex-col gap-2">
+            <ul className="flex flex-col divide-y divide-border">
               {feed.map((item) => (
-                <li key={item.id} className="flex items-center justify-between text-sm">
-                  <span className="text-ink">{item.label}</span>
-                  <span className="whitespace-nowrap text-xs text-ink-faint">
+                <li key={item.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    <span
+                      className={cn(
+                        'h-1.5 w-1.5 shrink-0 rounded-full',
+                        item.id.startsWith('lead-') ? 'bg-brand-500' : 'bg-neutral-500'
+                      )}
+                      aria-hidden
+                    />
+                    <span className="truncate text-body-sm text-ink">{item.label}</span>
+                  </span>
+                  <span className="shrink-0 whitespace-nowrap text-caption text-ink-faint">
                     {new Date(item.created_at).toLocaleString('ar-SA')}
                   </span>
                 </li>
               ))}
             </ul>
           )}
-        </div>
+        </Card>
       </div>
     </div>
+  );
+}
+
+function DashboardStat({
+  icon: Icon,
+  tone,
+  label,
+  value,
+  helper,
+  valueClassName,
+}: {
+  icon: LucideIcon;
+  tone: 'brand' | 'success' | 'warning' | 'info';
+  label: string;
+  value: string | number;
+  helper?: string;
+  valueClassName?: string;
+}) {
+  const toneClasses: Record<string, string> = {
+    brand: 'bg-brand-50 text-brand-600',
+    success: 'bg-success-50 text-success',
+    warning: 'bg-warning-50 text-warning',
+    info: 'bg-info-50 text-info',
+  };
+  return (
+    <Card>
+      <div className="flex items-center justify-between">
+        <span className="text-body-sm text-ink-muted">{label}</span>
+        <span className={cn('flex h-8 w-8 items-center justify-center rounded-md', toneClasses[tone])}>
+          <Icon size={16} />
+        </span>
+      </div>
+      <p className={valueClassName ?? 'mt-3 text-title-lg text-ink'}>{value}</p>
+      {helper && <p className="mt-1 text-caption text-ink-faint">{helper}</p>}
+    </Card>
   );
 }

@@ -4,6 +4,7 @@ import { requireWorkspace } from '@/lib/workspace';
 import { Button } from '@/components/ui/button';
 import { AuthShell } from '@/components/auth/auth-shell';
 import { AuthCard } from '@/components/auth/auth-card';
+import { OnboardingSteps } from '@/components/auth/onboarding-steps';
 import { getOnboardingChecklist, checklistProgress } from '@/lib/onboarding/checklist';
 import { dismissOnboardingWizardAction } from './actions';
 
@@ -20,8 +21,9 @@ export default async function OnboardingSetupPage() {
       panelSubtitle="أكمل الإعداد الأساسي الآن، ويمكنك دائمًا العودة والمتابعة لاحقًا من لوحة التحكم."
     >
       <AuthCard title="لنجهّز حسابك خطوة بخطوة" description="أكمل الخطوات التالية لتبدأ باستقبال عملاء حقيقيين من صفحتك.">
+        <OnboardingSteps current={2} />
         <div className="mb-6">
-          <div className="mb-2 flex items-center justify-between text-sm">
+          <div className="mb-2 flex items-center justify-between text-body-sm">
             <span className="font-semibold text-ink">{progress}% مكتمل</span>
             <span className="text-ink-faint">
               {doneCount} من {steps.length}
@@ -40,7 +42,7 @@ export default async function OnboardingSetupPage() {
             <li key={step.id} className="animate-rise-in">
               <Link
                 href={step.href}
-                className="group flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition-colors hover:bg-surface-subtle"
+                className="group flex items-center gap-3 rounded-xl px-3 py-3 text-body-sm transition-colors hover:bg-surface-subtle"
               >
                 {step.done ? (
                   <CheckCircle2 size={19} className="shrink-0 text-success" />
@@ -63,7 +65,7 @@ export default async function OnboardingSetupPage() {
 
         <div className="flex items-center justify-between gap-3 border-t border-border pt-5">
           <form action={dismissOnboardingWizardAction}>
-            <button type="submit" className="text-xs font-medium text-ink-faint transition-colors hover:text-ink">
+            <button type="submit" className="text-caption font-medium text-ink-faint transition-colors hover:text-ink">
               عدم إظهار هذه الصفحة مرة أخرى
             </button>
           </form>

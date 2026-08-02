@@ -1,7 +1,8 @@
 import { requireWorkspace } from '@/lib/workspace';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
+import { PageHeader } from '@/components/ui/page-header';
 import { PLATFORM_LABELS } from '@/lib/campaigns/constants';
 import { createCampaignAction } from '../actions';
 
@@ -27,13 +28,14 @@ export default async function NewCampaignPage({
 
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="mb-1 text-xl font-semibold text-ink">حملة جديدة</h1>
-      <p className="mb-6 text-sm text-ink-muted">
-        اربط الحملة بصفحة هبوط لتتبع الزيارات والعملاء المحتملين تلقائيًا.
-      </p>
+      <PageHeader
+        title="حملة جديدة"
+        description="اربط الحملة بصفحة هبوط لتتبع الزيارات والعملاء المحتملين تلقائيًا."
+        className="mb-6"
+      />
 
       {searchParams.error && (
-        <div className="mb-4 rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
+        <div className="mb-4 rounded-md border border-danger/30 bg-danger-50 px-3 py-2 text-body-sm text-danger">
           {ERROR_MESSAGES[searchParams.error] ?? ERROR_MESSAGES.create_failed}
         </div>
       )}
@@ -65,12 +67,12 @@ export default async function NewCampaignPage({
           <Input name="endsAt" type="date" label="تاريخ الانتهاء" />
         </div>
 
-        <p className="rounded-md bg-surface-subtle p-3 text-xs text-ink-muted">
+        <p className="rounded-md bg-surface-subtle p-3 text-caption text-ink-muted">
           بعد الإنشاء، أضف <code dir="ltr">utm_campaign</code> بالقيمة المطابقة لاسم الحملة (بصيغة
           slug) إلى رابط إعلانك ليتم ربط كل زيارة وعميل محتمل بهذه الحملة تلقائيًا.
         </p>
 
-        <Button type="submit" size="lg">إنشاء الحملة</Button>
+        <SubmitButton size="lg">إنشاء الحملة</SubmitButton>
       </form>
     </div>
   );

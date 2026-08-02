@@ -35,7 +35,7 @@ export function AddLeadButton() {
 
       <Modal open={open} onClose={() => setOpen(false)} title="إضافة عميل محتمل جديد">
         {duplicate && (
-          <div className="mb-4 flex items-start gap-2 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-sm text-warning">
+          <div className="mb-4 flex items-start gap-2 rounded-md border border-warning/30 bg-warning-50 px-3 py-2 text-body-sm text-warning">
             <AlertTriangle size={16} className="mt-0.5 shrink-0" />
             <span>
               يوجد عميل محتمل بنفس الهاتف أو البريد باسم &quot;{duplicate.full_name}&quot;.{' '}

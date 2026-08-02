@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/ui/page-header';
 import { requireWorkspace } from '@/lib/workspace';
 import { RuleCard } from './rule-card';
 import { CampaignTagRules } from './campaign-tag-rules';
@@ -27,10 +28,7 @@ export default async function AutomationsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold text-ink">الأتمتة</h1>
-        <p className="text-sm text-ink-muted">قواعد جاهزة وبسيطة — فعّل ما يناسبك واضبط رقمه فقط.</p>
-      </div>
+      <PageHeader title="الأتمتة" description="قواعد جاهزة وبسيطة — فعّل ما يناسبك واضبط رقمه فقط." />
 
       <PageGuide
         guideKey="automations"
