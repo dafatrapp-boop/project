@@ -38,7 +38,7 @@ const POSTGRES_UNIQUE_VIOLATION = '23505';
  * times with a fresh suffix before giving up.
  */
 async function insertWithUniqueSlug<T>(
-  attemptInsert: (slug: string) => Promise<{ data: T | null; error: { code?: string; message: string } | null }>,
+  attemptInsert: (slug: string) => PromiseLike<{ data: T | null; error: { code?: string; message: string } | null }>,
   baseSlug: string,
   maxAttempts = 5
 ): Promise<{ data: T | null; error: { code?: string; message: string } | null }> {
