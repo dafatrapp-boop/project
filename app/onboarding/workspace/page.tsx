@@ -19,6 +19,7 @@ import { AuthCard } from '@/components/auth/auth-card';
 import { AuthAlert } from '@/components/auth/auth-alert';
 import { OnboardingSteps } from '@/components/auth/onboarding-steps';
 import { TEMPLATES } from '@/lib/landing-pages/templates';
+import { slugify as slugifyAscii, insertWithUniqueSlug } from '@/lib/landing-pages/slug';
 
 const INDUSTRIES: {
   value:
@@ -127,21 +128,30 @@ async function createWorkspaceAction(formData: FormData) {
     TEMPLATES.find((t) => t.id === industry) ??
     TEMPLATES[TEMPLATES.length - 1];
 
-  const pageSlug = `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`;
+  // Uses the same ASCII-only slugify + retry-on-collision helper as the
+  // dashboard's own "create landing page" action (lib/landing-pages/slug.ts)
+  // — `landing_pages.slug` is unique across every workspace (migration
+  // 0022), so a single un-retried insert here could fail onboarding
+  // entirely on a rare slug collision with an unrelated workspace. It
+  // also avoids putting Arabic text straight into the public URL,
+  // which is fragile across browsers and messaging-app link previews.
+  const pageBaseSlug = slugifyAscii(name);
 
-  const { error: pageError } = await supabase
-    .from('landing_pages')
-    .insert({
-      workspace_id: workspace.id,
-      title: 'صفحتي الأولى',
-      slug: pageSlug,
-      template: template.id,
-      status: 'draft',
-      sections: template.sections,
-      whatsapp_number: null,
-      meta_title: null,
-      meta_description: null,
-    });
+  const { error: pageError } = await insertWithUniqueSlug<null>(
+    (pageSlug) =>
+      supabase.from('landing_pages').insert({
+        workspace_id: workspace.id,
+        title: 'صفحتي الأولى',
+        slug: pageSlug,
+        template: template.id,
+        status: 'draft',
+        sections: template.sections,
+        whatsapp_number: null,
+        meta_title: null,
+        meta_description: null,
+      }),
+    pageBaseSlug
+  );
 
   if (pageError) {
     console.error('LANDING PAGE ERROR:', pageError);

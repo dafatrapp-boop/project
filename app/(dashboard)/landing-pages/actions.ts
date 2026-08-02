@@ -7,54 +7,7 @@ import { TEMPLATES } from '@/lib/landing-pages/templates';
 import type { Section } from '@/lib/landing-pages/types';
 import { PLAN_LIMITS, isUnderLimit, hasFeature } from '@/lib/plans/constants';
 
-function slugify(input: string) {
-  // Deliberately Latin/ASCII-only. An earlier version kept Arabic
-  // characters in the slug (since most titles here are Arabic), but
-  // Arabic text in a URL path is fragile across browsers, messaging
-  // apps (WhatsApp/Instagram link previews), and copy-paste — it's
-  // what broke https://…/p/سارع-بالحجز-عرض-شهر-رمضان-mur6 above. The
-  // Arabic title is already shown everywhere in the dashboard UI;
-  // the public URL itself just needs to be a short, robust identifier.
-  const ascii = input
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-  return ascii || 'page';
-}
-
-function randomSlugSuffix() {
-  return Math.random().toString(36).slice(2, 6);
-}
-
-const POSTGRES_UNIQUE_VIOLATION = '23505';
-
-/**
- * `slug` is now unique across every workspace, not just within one
- * (see migration 0022 — closes the cross-tenant slug collision bug
- * from the architecture review). A collision on the random suffix is
- * rare but no longer impossible to hit in practice with many tenants,
- * so instead of surfacing the raw DB error to the user, retry a few
- * times with a fresh suffix before giving up.
- */
-async function insertWithUniqueSlug<T>(
-  attemptInsert: (slug: string) => PromiseLike<{ data: T | null; error: { code?: string; message: string } | null }>,
-  baseSlug: string,
-  maxAttempts = 5
-): Promise<{ data: T | null; error: { code?: string; message: string } | null }> {
-  let lastResult: { data: T | null; error: { code?: string; message: string } | null } = {
-    data: null,
-    error: { message: 'unreachable' },
-  };
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const slug = `${baseSlug}-${randomSlugSuffix()}`;
-    lastResult = await attemptInsert(slug);
-    if (!lastResult.error || lastResult.error.code !== POSTGRES_UNIQUE_VIOLATION) {
-      return lastResult;
-    }
-  }
-  return lastResult;
-}
+import { slugify, insertWithUniqueSlug } from '@/lib/landing-pages/slug';
 
 export async function createLandingPageAction(formData: FormData) {
   const { supabase, workspaceId, plan } = await requireWorkspace();
