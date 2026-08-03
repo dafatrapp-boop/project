@@ -21,13 +21,14 @@ export default async function LandingPagesListPage({
 }) {
   const { supabase, workspaceId, user } = await requireWorkspace();
 
-  const { data: pages } = await supabase
-    .from('landing_pages')
-    .select('id, title, slug, status, created_at')
-    .eq('workspace_id', workspaceId)
-    .order('created_at', { ascending: false });
-
-  const guideDismissed = await getGuideDismissed(supabase, user.id, 'landing_pages');
+  const [{ data: pages }, guideDismissed] = await Promise.all([
+    supabase
+      .from('landing_pages')
+      .select('id, title, slug, status, created_at')
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: false }),
+    getGuideDismissed(supabase, user.id, 'landing_pages'),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">

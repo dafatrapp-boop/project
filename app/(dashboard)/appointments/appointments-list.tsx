@@ -38,7 +38,11 @@ export function AppointmentsList({ rows }: { rows: AppointmentRow[] }) {
   const [status, setStatus] = useState<'' | AppointmentStatus>('');
   const [showPast, setShowPast] = useState(false);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Computed once per mount rather than on every render (every
+  // keystroke in the search box below would otherwise recompute it).
+  // UTC-based (not the runtime's local timezone) so server render and
+  // client hydration always agree on which calendar day "today" is.
+  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const filtered = useMemo(() => {
     return rows.filter((r) => {

@@ -121,10 +121,12 @@ export interface Database {
           due_at: string;
           note: string | null;
           completed_at: string | null;
+          notified_at: string | null;
           created_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['lead_follow_ups']['Row'], 'id' | 'created_at'> & {
+        Insert: Omit<Database['public']['Tables']['lead_follow_ups']['Row'], 'id' | 'created_at' | 'notified_at'> & {
           id?: string;
+          notified_at?: string | null;
         };
         Update: Partial<Database['public']['Tables']['lead_follow_ups']['Row']>;
       };
@@ -563,6 +565,10 @@ export interface Database {
       process_due_reminders: {
         Args: { p_batch_size?: number };
         Returns: { reminder_id: string; outcome: string }[];
+      };
+      process_due_follow_ups: {
+        Args: { p_batch_size?: number };
+        Returns: { follow_up_id: string; outcome: string }[];
       };
     };
   };

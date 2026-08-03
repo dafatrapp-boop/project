@@ -10,12 +10,11 @@ import { defaultConfigFor } from '@/lib/automation/constants';
 export default async function AutomationsPage() {
   const { supabase, workspaceId, user } = await requireWorkspace();
 
-  const [{ data: rules }, { data: campaigns }] = await Promise.all([
+  const [{ data: rules }, { data: campaigns }, guideDismissed] = await Promise.all([
     supabase.from('automation_rules').select('*').eq('workspace_id', workspaceId),
     supabase.from('campaigns').select('id, name').eq('workspace_id', workspaceId).order('name'),
+    getGuideDismissed(supabase, user.id, 'automations'),
   ]);
-
-  const guideDismissed = await getGuideDismissed(supabase, user.id, 'automations');
 
   const staleRule = rules?.find((r) => r.rule_type === 'lead_stale_reminder');
   const followupRule = rules?.find((r) => r.rule_type === 'interested_followup');

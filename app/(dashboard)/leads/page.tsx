@@ -47,7 +47,6 @@ export default async function LeadsPage({
   const showKanban = hasFeature(plan, 'kanbanPipeline');
   const showImport = hasFeature(plan, 'csvImport');
   const showExcel = hasFeature(plan, 'excelExport');
-  const guideDismissed = await getGuideDismissed(supabase, user.id, 'leads');
 
   let query = supabase
     .from('leads')
@@ -67,7 +66,12 @@ export default async function LeadsPage({
     query = query.textSearch('search_vector', searchParams.q, { type: 'websearch' });
   }
 
-  const { data: leads } = await query;
+  // Independent of each other — only need workspaceId/user.id, both
+  // already resolved above.
+  const [{ data: leads }, guideDismissed] = await Promise.all([
+    query,
+    getGuideDismissed(supabase, user.id, 'leads'),
+  ]);
 
   const columns: Column<LeadRow>[] = [
     {

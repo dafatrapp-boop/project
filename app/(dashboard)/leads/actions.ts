@@ -77,22 +77,29 @@ export async function addNoteAction(leadId: string, formData: FormData) {
 export async function createFollowUpAction(leadId: string, formData: FormData) {
   const { supabase, workspaceId } = await requireWorkspace();
 
-  const dueAt = String(formData.get('dueAt') ?? '');
+  // Already converted to a correct UTC instant client-side (see
+  // follow-up-form.tsx) — the browser knows the visitor's real
+  // timezone, this server action does not, so it trusts the ISO value
+  // rather than re-parsing the original timezone-less datetime-local
+  // string itself.
+  const dueAtIso = String(formData.get('dueAtIso') ?? '');
   const note = String(formData.get('note') ?? '').trim() || null;
-  if (!dueAt) return;
+  if (!dueAtIso) return;
 
-    const { error } = await supabase.from('lead_follow_ups').insert({
+  const dueAt = new Date(dueAtIso);
+  if (Number.isNaN(dueAt.getTime())) return;
+
+  const { error } = await supabase.from('lead_follow_ups').insert({
     lead_id: leadId,
     workspace_id: workspaceId,
-    due_at: new Date(dueAt).toISOString(),
+    due_at: dueAt.toISOString(),
     note,
     assigned_to: null,
     completed_at: null,
   });
-    if (error) {
-      console.error('[lead_follow_ups] update/delete failed:', error);
-    }
-
+  if (error) {
+    console.error('[lead_follow_ups] insert failed:', error);
+  }
 
   revalidatePath(`/leads/${leadId}`);
 }

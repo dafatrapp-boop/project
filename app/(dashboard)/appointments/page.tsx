@@ -12,21 +12,17 @@ import { APPOINTMENTS_GUIDE } from '@/lib/guide/content';
 export default async function AppointmentsPage() {
   const { supabase, workspaceId, user } = await requireWorkspace();
 
-  const { data: settings } = await supabase
-    .from('appointment_settings')
-    .select('enabled')
-    .eq('workspace_id', workspaceId)
-    .single();
-
-  const { data: appointments } = await supabase
-    .from('appointments')
-    .select('id, customer_name, phone, email, appointment_date, start_time, status, source')
-    .eq('workspace_id', workspaceId)
-    .order('appointment_date', { ascending: true })
-    .order('start_time', { ascending: true })
-    .limit(150);
-
-  const guideDismissed = await getGuideDismissed(supabase, user.id, 'appointments');
+  const [{ data: settings }, { data: appointments }, guideDismissed] = await Promise.all([
+    supabase.from('appointment_settings').select('enabled').eq('workspace_id', workspaceId).single(),
+    supabase
+      .from('appointments')
+      .select('id, customer_name, phone, email, appointment_date, start_time, status, source')
+      .eq('workspace_id', workspaceId)
+      .order('appointment_date', { ascending: true })
+      .order('start_time', { ascending: true })
+      .limit(150),
+    getGuideDismissed(supabase, user.id, 'appointments'),
+  ]);
 
   const rows = (appointments ?? []) as AppointmentRow[];
 

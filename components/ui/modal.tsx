@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion, type PanInfo } from 'framer-motion';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -29,11 +30,44 @@ interface ModalProps {
  * timing via AnimatePresence. Accessibility (focus trap, Escape-to-
  * close, focus restore) is reimplemented manually below instead of
  * getting it for free from <dialog>.
+ *
+ * Rendered through a portal into document.body rather than inline
+ * where it's called. This isn't cosmetic: every dashboard page's
+ * content is wrapped in PullToRefresh's `motion.div` (a bound `y`
+ * motion value), and per the CSS spec any element with an active
+ * `transform` becomes the containing block for descendant `position:
+ * fixed` elements — this modal's overlay uses `fixed inset-0`. Left
+ * inline, the modal would be confined to that transformed ancestor
+ * instead of the real viewport, which on a scrolled-down page means it
+ * could render offset or only partially covering the screen. A portal
+ * sidesteps this — and any future ancestor styling — entirely by
+ * mounting the modal directly under <body>, which is the standard,
+ * correct place for any overlay to live regardless of this specific
+ * interaction.
  */
 export function Modal({ open, onClose, title, children, className }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
   const prefersReducedMotion = useReducedMotion();
+  // document.body doesn't exist during SSR, and no caller ever opens a
+  // modal on first paint (`open` always starts false), so gating the
+  // portal on mount costs nothing in practice.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  // `onClose` is passed as a fresh inline arrow function by every
+  // caller (`onClose={() => setOpen(false)}`), so its reference
+  // changes on every render of the parent — including a render caused
+  // by typing into a controlled input inside this modal. Reading it
+  // through a ref (always current, updated below) instead of a
+  // dependency keeps the effect from re-running on every keystroke —
+  // it previously depended on [open, onClose] and called
+  // panelRef.current?.focus() on each run, which stole focus back
+  // from whatever input the user was actively typing into.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -41,7 +75,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
 
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
         return;
       }
       // Minimal focus trap — Tab/Shift+Tab cycle within the panel only.
@@ -73,7 +107,11 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
       document.body.style.overflow = '';
       previouslyFocused.current?.focus?.();
     };
-  }, [open, onClose]);
+    // Deliberately only [open] — see onCloseRef above. Re-running this
+    // effect on anything other than an actual open/close transition is
+    // what caused the focus-steal bug.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   function handleDragEnd(_: unknown, info: PanInfo) {
     if (info.offset.y > 120 || info.velocity.y > 500) {
@@ -82,7 +120,9 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
     }
   }
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center">
@@ -135,6 +175,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

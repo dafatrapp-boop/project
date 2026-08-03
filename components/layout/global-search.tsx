@@ -15,7 +15,14 @@ export function GlobalSearch() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
+  // Guards against out-of-order responses: if query A's request is
+  // still in flight when query B fires, and A's response happens to
+  // land after B's, it would otherwise overwrite B's correct results
+  // with stale ones. `cancelled` is a fresh local flag per effect run
+  // (the standard pattern for this — see React's own docs on data
+  // fetching in effects) — this run's own callback checks it before
+  // touching state, so only the most recent request's response ever
+  // actually applies.
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (query.trim().length < 2) {
@@ -23,16 +30,18 @@ export function GlobalSearch() {
       return;
     }
     setLoading(true);
+    let cancelled = false;
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
         const data = await res.json();
-        setResults(data.results ?? []);
+        if (!cancelled) setResults(data.results ?? []);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }, 300);
     return () => {
+      cancelled = true;
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [query]);

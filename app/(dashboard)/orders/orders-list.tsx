@@ -95,7 +95,15 @@ export function OrdersList({ rows }: { rows: OrderRow[] }) {
         ),
     },
     { header: 'الحالة', cell: (row) => <OrderStatusSelect orderId={row.id} status={row.status} /> },
-    { header: 'تاريخ الإنشاء', cell: (row) => new Date(row.created_at).toLocaleDateString('ar-SA') },
+    {
+      header: 'تاريخ الإنشاء',
+      // Explicit timeZone so this renders identically during SSR (on
+      // the server's clock) and client hydration — without it, the
+      // runtime's implicit local timezone differs between the two
+      // whenever the visitor isn't in the same timezone as the server,
+      // which is a real hydration mismatch, not just a theoretical one.
+      cell: (row) => new Date(row.created_at).toLocaleDateString('ar-SA', { timeZone: 'UTC' }),
+    },
     { header: '', cell: (row) => <DeleteOrderButton orderId={row.id} productName={row.product_name} /> },
   ];
 

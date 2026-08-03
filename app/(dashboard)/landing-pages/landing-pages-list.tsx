@@ -72,7 +72,10 @@ export function LandingPagesList({ pages }: { pages: PageRow[] }) {
     },
     {
       header: 'تاريخ الإنشاء',
-      cell: (row) => new Date(row.created_at).toLocaleDateString('ar-SA'),
+      // Explicit timeZone so this renders identically during SSR and
+      // client hydration regardless of the visitor's own timezone —
+      // see orders-list.tsx for the same fix and full reasoning.
+      cell: (row) => new Date(row.created_at).toLocaleDateString('ar-SA', { timeZone: 'UTC' }),
     },
     {
       header: '',

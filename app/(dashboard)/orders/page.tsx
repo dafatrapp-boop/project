@@ -11,7 +11,7 @@ import { ORDERS_GUIDE } from '@/lib/guide/content';
 export default async function OrdersPage() {
   const { supabase, workspaceId, user } = await requireWorkspace();
 
-  const [{ data: orders }, { data: leads }, { data: stats }] = await Promise.all([
+  const [{ data: orders }, { data: leads }, { data: stats }, guideDismissed] = await Promise.all([
     supabase
       .from('orders')
       .select('id, product_name, price, currency, payment_method, status, created_at, leads(full_name, phone)')
@@ -20,9 +20,8 @@ export default async function OrdersPage() {
       .limit(100),
     supabase.from('leads').select('id, full_name').eq('workspace_id', workspaceId).order('full_name').limit(200),
     supabase.from('order_stats').select('*').eq('workspace_id', workspaceId).maybeSingle(),
+    getGuideDismissed(supabase, user.id, 'orders'),
   ]);
-
-  const guideDismissed = await getGuideDismissed(supabase, user.id, 'orders');
 
   const rows = (orders ?? []) as unknown as OrderRow[];
 

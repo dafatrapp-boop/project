@@ -9,14 +9,15 @@ import { TESTIMONIALS_GUIDE } from '@/lib/guide/content';
 export default async function TestimonialsPage() {
   const { supabase, workspaceId, user } = await requireWorkspace();
 
-  const { data: testimonials } = await supabase
-    .from('testimonials')
-    .select('*')
-    .eq('workspace_id', workspaceId)
-    .order('display_order', { ascending: true })
-    .order('created_at', { ascending: false });
-
-  const guideDismissed = await getGuideDismissed(supabase, user.id, 'testimonials');
+  const [{ data: testimonials }, guideDismissed] = await Promise.all([
+    supabase
+      .from('testimonials')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .order('display_order', { ascending: true })
+      .order('created_at', { ascending: false }),
+    getGuideDismissed(supabase, user.id, 'testimonials'),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">

@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { useHydrated } from '@/lib/hooks/use-hydrated';
 
 export interface ActivityEntry {
   id: string;
@@ -64,20 +65,32 @@ function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString('ar-SA');
 }
 
+// Compares calendar days via their UTC date string rather than
+// `toDateString()` (which uses the runtime's local timezone). Server
+// rendering and browser hydration would otherwise disagree on which
+// entries count as "today" any time the visitor isn't in the same
+// timezone as the server (UTC on Vercel) — not just a rare
+// midnight-instant race, but a mismatch for the entire session for
+// most non-UTC visitors. Comparing both sides against UTC keeps server
+// and client output identical.
+function utcDateString(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
 function dayLabel(iso: string): string {
   const date = new Date(iso);
   const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
-  const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
-  if (sameDay(date, today)) return 'اليوم';
-  if (sameDay(date, yesterday)) return 'أمس';
-  return date.toLocaleDateString('ar-SA', { weekday: 'long', month: 'long', day: 'numeric' });
+  const yesterday = new Date(today);
+  yesterday.setUTCDate(today.getUTCDate() - 1);
+  if (utcDateString(date) === utcDateString(today)) return 'اليوم';
+  if (utcDateString(date) === utcDateString(yesterday)) return 'أمس';
+  return date.toLocaleDateString('ar-SA', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
 }
 
 export function ActivityLogList({ entries }: { entries: ActivityEntry[] }) {
   const [q, setQ] = useState('');
   const [action, setAction] = useState('');
+  const hydrated = useHydrated();
 
   const availableActions = useMemo(
     () => Array.from(new Set(entries.map((e) => e.action))),
@@ -167,9 +180,20 @@ export function ActivityLogList({ entries }: { entries: ActivityEntry[] }) {
                         </div>
                         <span
                           className="shrink-0 whitespace-nowrap text-caption text-ink-faint"
-                          title={new Date(e.created_at).toLocaleString('ar-SA')}
+                          title={hydrated ? new Date(e.created_at).toLocaleString('ar-SA') : undefined}
                         >
-                          {relativeTime(e.created_at)}
+                          {/* Pre-hydration fallback is UTC-based (identical on
+                              server and client regardless of the visitor's own
+                              timezone) so there's never a mismatch to reconcile;
+                              the nicer, locale/timezone-aware relative time
+                              swaps in the instant this component mounts. */}
+                          {hydrated
+                            ? relativeTime(e.created_at)
+                            : new Date(e.created_at).toLocaleDateString('ar-SA', {
+                                timeZone: 'UTC',
+                                month: 'short',
+                                day: 'numeric',
+                              })}
                         </span>
                       </li>
                     );
