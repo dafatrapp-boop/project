@@ -10,6 +10,7 @@ import {
   MessageSquareQuote,
   Zap,
   Settings,
+  Bell,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -61,6 +62,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'المبيعات والعملاء',
     items: [
       { href: '/leads', label: 'العملاء المحتملون', icon: Users },
+      { href: '/reminders', label: 'التذكيرات', icon: Bell },
       { href: '/appointments', label: 'المواعيد', icon: CalendarClock, requires: 'appointments' },
       { href: '/orders', label: 'الطلبات', icon: ShoppingBag, requires: 'orders' },
     ],

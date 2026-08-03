@@ -10,18 +10,19 @@ import { CAMPAIGNS_GUIDE } from '@/lib/guide/content';
 
 export default async function CampaignsListPage() {
   const { supabase, workspaceId, user } = await requireWorkspace();
-  const guideDismissed = await getGuideDismissed(supabase, user.id, 'campaigns');
 
-  const { data: campaigns } = await supabase
-    .from('campaigns')
-    .select('id, name, platform, status')
-    .eq('workspace_id', workspaceId)
-    .order('created_at', { ascending: false });
-
-  const { data: stats } = await supabase
-    .from('campaign_stats')
-    .select('campaign_id, leads_count, views_count')
-    .eq('workspace_id', workspaceId);
+  const [guideDismissed, { data: campaigns }, { data: stats }] = await Promise.all([
+    getGuideDismissed(supabase, user.id, 'campaigns'),
+    supabase
+      .from('campaigns')
+      .select('id, name, platform, status')
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('campaign_stats')
+      .select('campaign_id, leads_count, views_count')
+      .eq('workspace_id', workspaceId),
+  ]);
 
   const statsById = new Map((stats ?? []).map((s) => [s.campaign_id, s]));
 

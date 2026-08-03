@@ -11,6 +11,7 @@ import { StatusSelect } from './status-select';
 import { NoteForm } from './note-form';
 import { FollowUpForm, CompleteFollowUpButton } from './follow-up-form';
 import { TagEditor } from './tag-editor';
+import { ReminderFormModal } from '@/app/(dashboard)/reminders/reminder-form-modal';
 
 export default async function LeadDetailPage({ params }: { params: { id: string } }) {
   const { supabase, workspaceId, plan } = await requireWorkspace();
@@ -122,7 +123,10 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
           completing the next touch-point is the highest-frequency
           action a salesperson takes on this page. */}
       <Card>
-        <CardHeader title="المتابعات" action={<CalendarClock size={16} className="text-ink-faint" />} />
+        <CardHeader
+          title="المتابعات"
+          action={<ReminderFormModal leadId={lead.id} leadName={lead.full_name} triggerLabel="تذكير فوري" />}
+        />
         <FollowUpForm leadId={lead.id} />
 
         <div className="mt-4 flex flex-col gap-2">

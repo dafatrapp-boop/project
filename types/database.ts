@@ -381,6 +381,70 @@ export interface Database {
         };
         Update: Partial<Database['public']['Tables']['user_guide_state']['Row']>;
       };
+      reminders: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          user_id: string;
+          lead_id: string | null;
+          task_id: string | null;
+          campaign_id: string | null;
+          reminder_type:
+            | 'lead_followup'
+            | 'call'
+            | 'meeting'
+            | 'task'
+            | 'callback'
+            | 'campaign'
+            | 'sales_activity'
+            | 'custom';
+          title: string;
+          description: string | null;
+          scheduled_at: string;
+          timezone: string;
+          status: 'pending' | 'processing' | 'sent' | 'failed' | 'cancelled';
+          next_attempt_at: string;
+          processed_at: string | null;
+          sent_at: string | null;
+          failed_at: string | null;
+          retry_count: number;
+          last_error: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<
+          Database['public']['Tables']['reminders']['Row'],
+          | 'id' | 'created_at' | 'updated_at' | 'reminder_type' | 'timezone' | 'status'
+          | 'next_attempt_at' | 'processed_at' | 'sent_at' | 'failed_at' | 'retry_count' | 'last_error'
+          | 'lead_id' | 'task_id' | 'campaign_id' | 'description'
+        > & {
+          id?: string;
+          reminder_type?: Database['public']['Tables']['reminders']['Row']['reminder_type'];
+          timezone?: string;
+          status?: Database['public']['Tables']['reminders']['Row']['status'];
+          next_attempt_at?: string;
+          lead_id?: string | null;
+          task_id?: string | null;
+          campaign_id?: string | null;
+          description?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['reminders']['Row']>;
+      };
+      push_delivery_log: {
+        Row: {
+          id: string;
+          notification_id: string | null;
+          subscription_id: string | null;
+          success: boolean;
+          status_code: number | null;
+          error: string | null;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['push_delivery_log']['Row'], 'id' | 'created_at'> & {
+          id?: string;
+        };
+        Update: Partial<Database['public']['Tables']['push_delivery_log']['Row']>;
+      };
     };
     Views: {
       campaign_stats: {
@@ -495,6 +559,10 @@ export interface Database {
       run_workspace_automations: {
         Args: { p_workspace_id: string };
         Returns: undefined;
+      };
+      process_due_reminders: {
+        Args: { p_batch_size?: number };
+        Returns: { reminder_id: string; outcome: string }[];
       };
     };
   };

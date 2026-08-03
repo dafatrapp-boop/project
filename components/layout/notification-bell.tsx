@@ -19,6 +19,14 @@ const TYPE_ICON_TONE: Record<string, string> = {
   new_lead: 'bg-brand-500',
   new_campaign: 'bg-success',
   plan_expiring: 'bg-danger',
+  reminder_lead_followup: 'bg-brand-500',
+  reminder_call: 'bg-brand-500',
+  reminder_callback: 'bg-brand-500',
+  reminder_campaign: 'bg-success',
+  reminder_meeting: 'bg-info',
+  reminder_task: 'bg-info',
+  reminder_sales_activity: 'bg-info',
+  reminder_custom: 'bg-info',
   other: 'bg-ink-faint',
 };
 

@@ -1,12 +1,12 @@
 import { Building2, ShieldCheck, CreditCard } from 'lucide-react';
-import { createClient } from '@/lib/supabase/server';
+import { requireWorkspace } from '@/lib/workspace';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select } from '@/components/ui/select';
 import { Card, CardHeader } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
-import { hasFeature, PLAN_LABELS, type Plan } from '@/lib/plans/constants';
+import { hasFeature, PLAN_LABELS } from '@/lib/plans/constants';
 import { WEEKDAY_LABELS, WEEKDAY_ORDER } from '@/lib/appointments/constants';
 import { PageGuide } from '@/components/guide/page-guide';
 import { getGuideDismissed } from '@/lib/guide/state';
@@ -44,42 +44,16 @@ export default async function SettingsPage({
 }: {
   searchParams: { error?: string; success?: string };
 }) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: membership } = await supabase
-    .from('workspace_members')
-    .select('workspace_id, role, workspaces(name, industry, meta_pixel_id, plan)')
-    .eq('user_id', user!.id)
-    .limit(1)
-    .maybeSingle();
-
-  const workspaceRaw = membership?.workspaces as
-  | { name: string; industry: string; meta_pixel_id: string | null; plan: Plan }
-  | { name: string; industry: string; meta_pixel_id: string | null; plan: Plan }[]
-  | undefined;
-const workspace = Array.isArray(workspaceRaw) ? workspaceRaw[0] ?? null : workspaceRaw ?? null;
-
-  const plan = workspace?.plan ?? 'free';
+  const { supabase, user, workspaceId, role, name, metaPixelId, plan } = await requireWorkspace();
   const pixelAllowed = hasFeature(plan, 'metaPixel');
 
-  const { data: appointmentSettings } = membership
-    ? await supabase
-        .from('appointment_settings')
-        .select('*')
-        .eq('workspace_id', membership.workspace_id)
-        .single()
-    : { data: null };
-
-  const guideDismissed = await getGuideDismissed(supabase, user!.id, 'settings');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('full_name')
-    .eq('id', user!.id)
-    .maybeSingle();
+  // All three only depend on workspaceId/user.id, both already resolved
+  // above — previously three separate sequential awaits.
+  const [{ data: appointmentSettings }, guideDismissed, { data: profile }] = await Promise.all([
+    supabase.from('appointment_settings').select('*').eq('workspace_id', workspaceId).single(),
+    getGuideDismissed(supabase, user.id, 'settings'),
+    supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
+  ]);
 
   const ROLE_LABELS: Record<string, string> = { owner: 'مالك', admin: 'مشرف', member: 'عضو' };
 
@@ -131,11 +105,11 @@ const workspace = Array.isArray(workspaceRaw) ? workspaceRaw[0] ?? null : worksp
         <dl className="flex flex-col gap-3 text-body-sm">
           <div className="flex items-center justify-between gap-3">
             <dt className="flex items-center gap-2 text-ink-muted"><Building2 size={14} /> اسم النشاط</dt>
-            <dd className="font-medium text-ink">{workspace?.name ?? '—'}</dd>
+            <dd className="font-medium text-ink">{name || '—'}</dd>
           </div>
           <div className="flex items-center justify-between gap-3">
             <dt className="flex items-center gap-2 text-ink-muted"><ShieldCheck size={14} /> دورك</dt>
-            <dd className="font-medium text-ink">{membership ? ROLE_LABELS[membership.role] ?? membership.role : '—'}</dd>
+            <dd className="font-medium text-ink">{ROLE_LABELS[role] ?? role}</dd>
           </div>
           <div className="flex items-center justify-between gap-3">
             <dt className="flex items-center gap-2 text-ink-muted"><CreditCard size={14} /> الباقة</dt>
@@ -160,7 +134,7 @@ const workspace = Array.isArray(workspaceRaw) ? workspaceRaw[0] ?? null : worksp
             name="metaPixelId"
             label="Meta Pixel ID"
             placeholder="مثال: 1234567890123456"
-            defaultValue={workspace?.meta_pixel_id ?? ''}
+            defaultValue={metaPixelId ?? ''}
             required
             pattern="\d{10,20}"
             title="أرقام فقط، من 10 إلى 20 رقمًا"

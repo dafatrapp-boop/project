@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { requireWorkspace } from '@/lib/workspace';
 import { Users, TrendingUp, Clock, Trophy, UserPlus, Activity as ActivityIcon, ShoppingBag, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { ACTIVITY_LABELS } from '@/lib/leads/constants';
@@ -23,38 +23,10 @@ const WORKSPACE_ACTION_LABELS: Record<string, string> = {
 };
 
 export default async function DashboardOverviewPage() {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: membership } = await supabase
-    .from('workspace_members')
-    .select('workspace_id, workspaces(name, industry)')
-    .eq('user_id', user!.id)
-    .limit(1)
-    .maybeSingle();
-
-  const workspaceId = membership?.workspace_id ?? '';
-  const workspacesRaw = membership?.workspaces as
-  | { name: string; industry: string }
-  | { name: string; industry: string }[]
-  | undefined;
-const workspaceMeta = Array.isArray(workspacesRaw) ? workspacesRaw[0] ?? null : workspacesRaw ?? null;
-  const workspaceName = workspaceMeta?.name ?? '';
+  const { supabase, user, workspaceId, name: workspaceName, industry } = await requireWorkspace();
   const showOrders = ORDER_RELEVANT_INDUSTRIES.includes(
-    (workspaceMeta?.industry ?? 'other') as (typeof ORDER_RELEVANT_INDUSTRIES)[number]
+    industry as (typeof ORDER_RELEVANT_INDUSTRIES)[number]
   );
-
-  // Opportunistic automation pass — see run_workspace_automations() in
-  // 0019_automation.sql: there's no background scheduler in this
-  // project, so time-based rules (stale-lead reminders, inactivity
-  // flags) are checked here, on a page every merchant visits daily.
-  if (workspaceId) {
-    await supabase.rpc('run_workspace_automations', { p_workspace_id: workspaceId });
-  }
-
-  const guideDismissed = await getGuideDismissed(supabase, user!.id, 'dashboard');
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -72,6 +44,8 @@ const workspaceMeta = Array.isArray(workspacesRaw) ? workspacesRaw[0] ?? null : 
     { data: recentLeadActivities },
     { data: recentWorkspaceActivity },
     { data: orderStats },
+    ,
+    guideDismissed,
   ] = await Promise.all([
     supabase.from('leads').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId),
     supabase
@@ -116,6 +90,15 @@ const workspaceMeta = Array.isArray(workspacesRaw) ? workspacesRaw[0] ?? null : 
     showOrders
       ? supabase.from('order_stats').select('*').eq('workspace_id', workspaceId).maybeSingle()
       : Promise.resolve({ data: null }),
+    // Opportunistic automation pass — see run_workspace_automations() in
+    // 0019_automation.sql: there's no background scheduler in this
+    // project, so time-based rules (stale-lead reminders, inactivity
+    // flags) are checked here, on a page every merchant visits daily.
+    // Independent of every other query above — only needs workspaceId,
+    // already resolved by requireWorkspace() — so it belongs in this
+    // same batch instead of a separate sequential await.
+    supabase.rpc('run_workspace_automations', { p_workspace_id: workspaceId }),
+    getGuideDismissed(supabase, user.id, 'dashboard'),
   ]);
 
   const todayViews = todayViewsRow?.views_count ?? 0;

@@ -1,52 +1,103 @@
+import { cache } from 'react';
 import { redirect } from 'next/navigation';
+import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { PLAN_FEATURES, type Plan } from '@/lib/plans/constants';
 
+export interface WorkspaceData {
+  workspaceId: string;
+  role: string;
+  plan: Plan;
+  industry: string;
+  name: string;
+  metaPixelId: string | null;
+  onboardingDismissedAt: string | null;
+}
+
+interface SessionContext {
+  supabase: ReturnType<typeof createClient>;
+  user: User | null;
+  workspace: WorkspaceData | null;
+}
+
 /**
- * Every dashboard page needs "which workspace is this user acting in".
- * Phase 1-8 assume a single workspace per user (per membership row
- * created at onboarding); multi-workspace switching is a later
- * enhancement, not required by the current spec phase.
+ * Resolves the signed-in user and their primary workspace exactly once
+ * per request. Every dashboard page, the layout's sidebar/header, and
+ * requireWorkspace() itself used to each run their own independent
+ * getUser() + workspace_members() + workspaces() round trips (up to 7
+ * queries for one page load, confirmed by the startup-performance
+ * audit). React's cache() memoizes this function per render pass, so
+ * every one of those call sites now shares a single in-flight promise
+ * instead of re-querying — no change to the "never cache across users"
+ * policy in lib/supabase/server.ts, this only dedupes *within* one
+ * user's own request.
  */
-export async function requireWorkspace() {
+export const getSessionContext = cache(async (): Promise<SessionContext> => {
   const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect('/login');
+  if (!user) return { supabase, user: null, workspace: null };
 
   const { data: membership } = await supabase
     .from('workspace_members')
-    .select('workspace_id, role')
+    .select('workspace_id, role, workspaces(name, industry, meta_pixel_id, plan, onboarding_dismissed_at)')
     .eq('user_id', user.id)
     // A user can legitimately belong to more than one workspace (their
     // own + any team they were invited into). Without an explicit
-    // order, Postgres gives no guarantee which row `.limit(1)` returns
-    // — it can differ between requests. Prefer a workspace they own,
-    // then fall back to their oldest membership, so the same user
-    // always lands in the same place instead of it flipping around.
-    .order('role', { ascending: true }) // member_role enum is declared ('owner','admin','agent') — Postgres enums sort by declaration order, so this already puts 'owner' first
+    // order, Postgres gives no guarantee which row `.limit(1)` returns.
+    // Prefer a workspace they own, then their oldest membership, so the
+    // same user always lands in the same place across requests.
+    .order('role', { ascending: true }) // member_role enum ('owner','admin','agent') sorts by declaration order
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle();
 
-  if (!membership) redirect('/onboarding/workspace');
+  if (!membership) return { supabase, user, workspace: null };
 
-  const { data: workspace } = await supabase
-    .from('workspaces')
-    .select('plan, industry, onboarding_dismissed_at')
-    .eq('id', membership.workspace_id)
-    .single();
+  const workspaceRaw = membership.workspaces as
+    | { name: string; industry: string; meta_pixel_id: string | null; plan: Plan; onboarding_dismissed_at: string | null }
+    | { name: string; industry: string; meta_pixel_id: string | null; plan: Plan; onboarding_dismissed_at: string | null }[]
+    | null;
+  const ws = Array.isArray(workspaceRaw) ? workspaceRaw[0] ?? null : workspaceRaw;
 
   return {
     supabase,
     user,
-    workspaceId: membership.workspace_id,
-    role: membership.role,
-    plan: (workspace?.plan ?? 'free') as Plan,
-    industry: workspace?.industry ?? 'other',
-    onboardingDismissedAt: workspace?.onboarding_dismissed_at ?? null,
+    workspace: {
+      workspaceId: membership.workspace_id,
+      role: membership.role,
+      plan: (ws?.plan ?? 'free') as Plan,
+      industry: ws?.industry ?? 'other',
+      name: ws?.name ?? '',
+      metaPixelId: ws?.meta_pixel_id ?? null,
+      onboardingDismissedAt: ws?.onboarding_dismissed_at ?? null,
+    },
+  };
+});
+
+/**
+ * Every dashboard page needs "which workspace is this user acting in".
+ * Safe to call from multiple components within the same request (page,
+ * layout, header) — they all resolve from the single cached call above.
+ */
+export async function requireWorkspace() {
+  const { supabase, user, workspace } = await getSessionContext();
+
+  if (!user) redirect('/login');
+  if (!workspace) redirect('/onboarding/workspace');
+
+  return {
+    supabase,
+    user,
+    workspaceId: workspace.workspaceId,
+    role: workspace.role,
+    plan: workspace.plan,
+    industry: workspace.industry,
+    name: workspace.name,
+    metaPixelId: workspace.metaPixelId,
+    onboardingDismissedAt: workspace.onboardingDismissedAt,
   };
 }
 

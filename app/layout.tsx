@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { IBM_Plex_Sans_Arabic } from 'next/font/google';
 import { ToastProvider } from '@/components/ui/toast';
-import { PWAProvider } from '@/components/pwa/pwa-provider';
+import { LaunchSplash } from '@/components/pwa/launch-splash';
 import './globals.css';
 
 // Arabic-first typography. Weights chosen to match a premium SaaS
@@ -75,9 +75,8 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="font-sans antialiased">
-        <ToastProvider>
-          <PWAProvider>{children}</PWAProvider>
-        </ToastProvider>
+        <LaunchSplash />
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );

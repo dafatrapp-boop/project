@@ -48,7 +48,7 @@ export function MobileNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-surface-overlay pb-[env(safe-area-inset-bottom)] shadow-overlay md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-surface-overlay pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] shadow-overlay md:hidden"
       aria-label="التنقل الرئيسي"
     >
       {ITEMS.map((item) => {

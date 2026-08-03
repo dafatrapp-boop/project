@@ -26,6 +26,21 @@ interface QueuedNotification {
   link: string | null;
 }
 
+// Reuses existing brand assets — no new image generation needed. The
+// shortcut icons already exist for the manifest's app-shortcuts
+// feature (public/icons/shortcut-*.png); giving lead- and campaign-
+// related pushes their own icon (instead of every notification type
+// looking identical, the audit's finding) costs nothing extra to ship.
+function iconForType(type: string): string {
+  if (type === 'new_lead' || type === 'reminder_lead_followup' || type === 'reminder_call' || type === 'reminder_callback') {
+    return '/icons/shortcut-leads.png';
+  }
+  if (type === 'new_campaign' || type === 'reminder_campaign') {
+    return '/icons/shortcut-campaigns.png';
+  }
+  return '/icons/icon-192.png';
+}
+
 Deno.serve(async (req: Request) => {
   const expectedSecret = Deno.env.get('PUSH_TRIGGER_SECRET');
   const authHeader = req.headers.get('Authorization') ?? '';
@@ -70,7 +85,15 @@ Deno.serve(async (req: Request) => {
     body: payload.body ?? '',
     url: payload.link ?? '/dashboard',
     type: payload.type,
-    tag: payload.type,
+    // Unique per notification (not per type) — a previous version used
+    // `payload.type` here, which meant two DIFFERENT notifications of
+    // the same type (e.g. two new leads arriving minutes apart)
+    // silently replaced each other instead of both showing, since same-
+    // tag notifications collapse by design in the Notifications API.
+    // Using the notification's own id means only genuine re-deliveries
+    // of the SAME notification would ever collapse.
+    tag: payload.notification_id,
+    icon: iconForType(payload.type),
     notificationId: payload.notification_id,
   });
 
@@ -84,6 +107,7 @@ Deno.serve(async (req: Request) => {
           },
           notificationPayload
         );
+        return { subscriptionId: sub.id, success: true as const };
       } catch (err) {
         const statusCode = (err as { statusCode?: number })?.statusCode;
         // 404/410 = the subscription is gone (user revoked permission,
@@ -92,10 +116,39 @@ Deno.serve(async (req: Request) => {
         if (statusCode === 404 || statusCode === 410) {
           await supabase.from('push_subscriptions').delete().eq('id', sub.id);
         }
-        throw err;
+        throw { subscriptionId: sub.id, statusCode, message: (err as Error)?.message ?? String(err) };
       }
     })
   );
+
+  // Delivery logging — previously nothing recorded whether a send
+  // actually succeeded per-device; this is the one piece of
+  // observability the audit flagged as completely absent. Best-effort:
+  // a logging failure must never affect the response below.
+  try {
+    const logRows = results.map((r) => {
+      if (r.status === 'fulfilled') {
+        return {
+          notification_id: payload.notification_id,
+          subscription_id: r.value.subscriptionId,
+          success: true,
+          status_code: 201,
+          error: null,
+        };
+      }
+      const reason = r.reason as { subscriptionId?: string; statusCode?: number; message?: string };
+      return {
+        notification_id: payload.notification_id,
+        subscription_id: reason?.subscriptionId ?? null,
+        success: false,
+        status_code: reason?.statusCode ?? null,
+        error: reason?.message ?? 'unknown_error',
+      };
+    });
+    await supabase.from('push_delivery_log').insert(logRows);
+  } catch {
+    // Never let logging failure mask the actual send result.
+  }
 
   const sent = results.filter((r) => r.status === 'fulfilled').length;
   return new Response(JSON.stringify({ sent, total: subscriptions.length }), {

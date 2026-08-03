@@ -41,7 +41,6 @@ export default async function AnalyticsPage({
   searchParams: { range?: string };
 }) {
   const { supabase, workspaceId, user } = await requireWorkspace();
-  const guideDismissed = await getGuideDismissed(supabase, user.id, 'analytics');
 
   const rangeDays = Number(searchParams.range ?? '30');
   const validRange = [7, 30, 90].includes(rangeDays) ? rangeDays : 30;
@@ -59,6 +58,7 @@ export default async function AnalyticsPage({
   const prevSinceDay = prevSince.toISOString().slice(0, 10);
 
   const [
+    guideDismissed,
     { data: leadsDaily },
     { data: viewsDaily },
     { data: leadsInRange },
@@ -68,6 +68,7 @@ export default async function AnalyticsPage({
     { data: prevLeadsDaily },
     { data: prevViewsDaily },
   ] = await Promise.all([
+    getGuideDismissed(supabase, user.id, 'analytics'),
     supabase
       .from('leads_daily_counts')
       .select('day, leads_count, won_count')

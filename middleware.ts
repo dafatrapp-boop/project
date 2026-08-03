@@ -43,6 +43,7 @@ export async function middleware(request: NextRequest) {
   const isProtectedRoute =
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/leads') ||
+    pathname.startsWith('/reminders') ||
     pathname.startsWith('/landing-pages') ||
     pathname.startsWith('/campaigns') ||
     pathname.startsWith('/more') ||
@@ -53,7 +54,11 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/onboarding') ||
     pathname.startsWith('/api/exports') ||
     pathname.startsWith('/api/search') ||
-    pathname.startsWith('/api/push') ||
+    // /api/push/vapid-public-key deliberately excluded — it's a
+    // read-only, non-secret value (see that route's own comment) the
+    // service worker must be able to fetch even if the user's session
+    // has expired, e.g. while recovering from pushsubscriptionchange.
+    (pathname.startsWith('/api/push') && !pathname.startsWith('/api/push/vapid-public-key')) ||
     pathname.startsWith('/api/stripe/checkout') ||
     pathname.startsWith('/api/stripe/portal');
 
@@ -74,9 +79,11 @@ export const config = {
   matcher: [
     /*
      * Match all paths except static files and image optimization,
-     * public landing-page routes served under /p/[slug], and the
-     * Stripe webhook (server-to-server, no user session to refresh).
+     * public landing-page routes served under /p/[slug], and
+     * server-to-server routes with no user session to refresh (the
+     * Stripe webhook, and the reminders cron endpoint — both
+     * authenticate via their own bearer secret, not a session cookie).
      */
-    '/((?!_next/static|_next/image|favicon.ico|p/|api/public|api/stripe/webhook|.*\\.(?:svg|png|jpg|jpeg|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|p/|api/public|api/stripe/webhook|api/cron|.*\\.(?:svg|png|jpg|jpeg|webp)$).*)',
   ],
 };
