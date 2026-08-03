@@ -19,6 +19,7 @@ import {
   LEAD_STATUS_LABELS,
   LEAD_STATUS_TONE,
   LEAD_STATUS_ORDER,
+  formatLeadSource,
   type LeadStatus,
 } from '@/lib/leads/constants';
 
@@ -106,7 +107,7 @@ export default async function LeadsPage({
           '—'
         ),
     },
-    { header: 'المصدر', cell: (row) => row.source ?? '—' },
+    { header: 'المصدر', cell: (row) => formatLeadSource(row.source) },
     {
       header: 'الحالة',
       cell: (row) => <Badge tone={LEAD_STATUS_TONE[row.status]}>{LEAD_STATUS_LABELS[row.status]}</Badge>,

@@ -1,6 +1,7 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { IBM_Plex_Sans_Arabic } from 'next/font/google';
 import { ToastProvider } from '@/components/ui/toast';
+import { PWAProvider } from '@/components/pwa/pwa-provider';
 import './globals.css';
 
 // Arabic-first typography. Weights chosen to match a premium SaaS
@@ -15,6 +16,37 @@ const arabicFont = IBM_Plex_Sans_Arabic({
 export const metadata: Metadata = {
   title: 'SocialSales OS',
   description: 'حوّل زوار إعلاناتك وصفحات التواصل الاجتماعي إلى عملاء فعليين',
+  // Next.js auto-serves app/manifest.ts at /manifest.webmanifest and
+  // links it here — no extra <link> tag needed.
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icons/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icons/favicon-16.png', sizes: '16x16', type: 'image/png' },
+    ],
+    apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
+  appleWebApp: {
+    // Standalone launch on iOS when added to the home screen.
+    capable: true,
+    title: 'SocialSales OS',
+    statusBarStyle: 'default',
+  },
+  formatDetection: {
+    // Arabic-first, business phone numbers throughout the UI — iOS's
+    // auto-linkification would otherwise mangle these into tel: links.
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#4938e7',
+  width: 'device-width',
+  initialScale: 1,
+  // Allow pinch-zoom (accessibility) but prevent the page from
+  // rubber-banding oddly in standalone mode.
+  viewportFit: 'cover',
 };
 
 // Phase 2 — dark mode bootstrap. Runs before paint (blocking, inline)
@@ -43,7 +75,9 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="font-sans antialiased">
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>
+          <PWAProvider>{children}</PWAProvider>
+        </ToastProvider>
       </body>
     </html>
   );

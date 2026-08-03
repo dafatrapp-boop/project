@@ -129,6 +129,7 @@ export default async function TeamPage({
               name={profileById.get(m.user_id) ?? 'بدون اسم'}
               role={m.role}
               isSelf={m.user_id === user.id}
+              missingName={!profileById.get(m.user_id)}
             />
           ))}
         </div>

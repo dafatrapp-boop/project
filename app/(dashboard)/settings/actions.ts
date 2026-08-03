@@ -4,6 +4,38 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireWorkspace } from '@/lib/workspace';
 
+/**
+ * The team page shows each member's name from `profiles.full_name`.
+ * Signup requires a full name today, but accounts created before that
+ * validation existed can still have a null value here — and until now
+ * there was no way to fix it short of editing the database directly.
+ * This gives every user a self-service way to set/correct their own
+ * display name (RLS already restricts profiles_update_own to the
+ * caller's own row, so no extra authorization check is needed here).
+ */
+export async function updateProfileAction(formData: FormData) {
+  const { supabase, user } = await requireWorkspace();
+
+  const fullName = String(formData.get('fullName') ?? '').trim();
+
+  if (!fullName) {
+    redirect('/settings?error=missing_name');
+  }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ full_name: fullName })
+    .eq('id', user.id);
+  if (error) {
+    console.error('[profiles] update failed:', error);
+    redirect('/settings?error=save_failed');
+  }
+
+  revalidatePath('/settings');
+  revalidatePath('/team');
+  redirect('/settings?success=profile');
+}
+
 export async function updateMetaPixelAction(formData: FormData) {
   const { supabase, workspaceId, role } = await requireWorkspace();
 

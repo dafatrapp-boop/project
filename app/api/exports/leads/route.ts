@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireWorkspace } from '@/lib/workspace';
-import { LEAD_STATUS_LABELS } from '@/lib/leads/constants';
+import { LEAD_STATUS_LABELS, formatLeadSource } from '@/lib/leads/constants';
 
 function toCsvValue(value: unknown) {
   const str = value === null || value === undefined ? '' : String(value);
@@ -29,7 +29,7 @@ export async function GET() {
     l.full_name,
     l.phone ?? '',
     l.email ?? '',
-    l.source ?? '',
+    formatLeadSource(l.source),
     LEAD_STATUS_LABELS[l.status],
     new Date(l.created_at).toISOString(),
   ]);

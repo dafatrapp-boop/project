@@ -12,7 +12,9 @@ import { PageGuide } from '@/components/guide/page-guide';
 import { getGuideDismissed } from '@/lib/guide/state';
 import { SETTINGS_GUIDE } from '@/lib/guide/content';
 import { WorkspaceTabs } from '@/components/layout/workspace-tabs';
+import { PushNotificationToggle } from '@/components/pwa/push-toggle';
 import {
+  updateProfileAction,
   updateMetaPixelAction,
   updateAppointmentSettingsAction,
   resetGuidesAction,
@@ -21,16 +23,18 @@ import {
 const ERROR_MESSAGES: Record<string, string> = {
   invalid_pixel_id: 'رقم Meta Pixel غير صالح — يجب أن يتكون من أرقام فقط (10-20 رقمًا).',
   missing_pixel_id: 'يرجى إدخال رقم Meta Pixel — لا يمكن حفظ الحقل فارغًا.',
-  save_failed: 'تعذر حفظ رقم Meta Pixel. حاول مرة أخرى.',
+  save_failed: 'تعذر الحفظ. حاول مرة أخرى.',
   not_authorized: 'يلزم أن تكون مالكًا أو مشرفًا لتعديل هذا الإعداد.',
   invalid_hours: 'وقت البداية يجب أن يكون قبل وقت النهاية.',
   missing_working_days: 'اختر يومًا واحدًا على الأقل من أيام العمل.',
+  missing_name: 'يرجى إدخال الاسم — لا يمكن حفظ الحقل فارغًا.',
 };
 
 const SUCCESS_MESSAGES: Record<string, string> = {
   '1': 'تم حفظ رقم Meta Pixel بنجاح.',
   appointments: 'تم حفظ إعدادات المواعيد بنجاح.',
   guides_reset: 'تمت إعادة تفعيل جميع الإرشادات — ستظهر من جديد أثناء تصفحك.',
+  profile: 'تم حفظ اسمك بنجاح.',
 };
 
 const SLOT_DURATIONS = [15, 20, 30, 45, 60, 90];
@@ -71,6 +75,12 @@ const workspace = Array.isArray(workspaceRaw) ? workspaceRaw[0] ?? null : worksp
 
   const guideDismissed = await getGuideDismissed(supabase, user!.id, 'settings');
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', user!.id)
+    .maybeSingle();
+
   const ROLE_LABELS: Record<string, string> = { owner: 'مالك', admin: 'مشرف', member: 'عضو' };
 
   return (
@@ -94,6 +104,28 @@ const workspace = Array.isArray(workspaceRaw) ? workspaceRaw[0] ?? null : worksp
       {/* All section cards below share one consistent max-width so
           their edges align down the page, instead of the previous mix
           of max-w-md / max-w-2xl per card. */}
+      <Card className="max-w-2xl">
+        <CardHeader
+          title="الملف الشخصي"
+          description="اسمك كما يظهر لباقي أعضاء الفريق."
+          action={!profile?.full_name ? <Badge tone="warning" size="sm">أضف اسمك</Badge> : undefined}
+        />
+        <form action={updateProfileAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="flex-1">
+            <Input
+              name="fullName"
+              label="الاسم الكامل"
+              placeholder="مثال: أحمد محمد"
+              defaultValue={profile?.full_name ?? ''}
+              required
+            />
+          </div>
+          <Button type="submit" variant="secondary" className="sm:w-auto">
+            حفظ
+          </Button>
+        </form>
+      </Card>
+
       <Card className="max-w-2xl">
         <CardHeader title="مساحة العمل" />
         <dl className="flex flex-col gap-3 text-body-sm">
@@ -229,6 +261,11 @@ const workspace = Array.isArray(workspaceRaw) ? workspaceRaw[0] ?? null : worksp
           </form>
         </Card>
       )}
+
+      <Card className="max-w-2xl">
+        <CardHeader title="الإشعارات" description="تحكم في الإشعارات الفورية على هذا الجهاز." />
+        <PushNotificationToggle />
+      </Card>
 
       <Card className="max-w-2xl">
         <CardHeader title="الإرشادات داخل التطبيق" />

@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { ChevronsRight, MessageCircle, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { NAV_OVERVIEW, NAV_GROUPS, NAV_WORKSPACE } from '@/lib/navigation';
+import { LogoutButton } from './logout-button';
 
 interface SidebarProps {
   showAppointments: boolean;
@@ -105,6 +106,7 @@ export function Sidebar({ showAppointments, showOrders, workspaceName }: Sidebar
           active={pathname.startsWith('/settings') || pathname.startsWith('/team')}
           collapsed={collapsed}
         />
+        <LogoutButton collapsed={collapsed} />
         <button
           onClick={toggleCollapsed}
           className={cn(

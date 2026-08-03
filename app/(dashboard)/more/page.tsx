@@ -1,8 +1,10 @@
 import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, LogOut } from 'lucide-react';
 import { requireWorkspace } from '@/lib/workspace';
 import { ORDER_RELEVANT_INDUSTRIES } from '@/lib/orders/constants';
 import { NAV_GROUPS, NAV_WORKSPACE, type NavItem } from '@/lib/navigation';
+import { signOutAction } from '@/lib/auth/actions';
+import { InstallMenuRow } from '@/components/pwa/install-app-control';
 
 /**
  * Mobile-only "more" hub. The bottom tab bar (components/layout/mobile-nav.tsx)
@@ -94,7 +96,21 @@ export default async function MorePage() {
       <div className="flex flex-col gap-2">
         <p className="px-1 text-micro uppercase tracking-wide text-ink-faint">الحساب</p>
         <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-subtle">
-          {renderRow(NAV_WORKSPACE, true)}
+          {renderRow(NAV_WORKSPACE, false)}
+          <InstallMenuRow />
+          <form action={signOutAction}>
+            <button
+              type="submit"
+              className="flex w-full items-center gap-3 px-4 py-3.5 text-start transition-colors hover:bg-danger-50"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-danger-50 text-danger">
+                <LogOut size={18} strokeWidth={2} />
+              </span>
+              <span className="flex-1">
+                <span className="block text-body-sm font-medium text-danger">تسجيل الخروج</span>
+              </span>
+            </button>
+          </form>
         </div>
       </div>
     </div>

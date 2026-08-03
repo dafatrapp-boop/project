@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { requireWorkspace } from '@/lib/workspace';
 import { hasFeature } from '@/lib/plans/constants';
-import { LEAD_STATUS_LABELS } from '@/lib/leads/constants';
+import { LEAD_STATUS_LABELS, formatLeadSource } from '@/lib/leads/constants';
 
 export async function GET() {
   const { supabase, workspaceId, plan } = await requireWorkspace();
@@ -28,7 +28,7 @@ export async function GET() {
     'الاسم': l.full_name,
     'الهاتف': l.phone ?? '',
     'البريد الإلكتروني': l.email ?? '',
-    'المصدر': l.source ?? '',
+    'المصدر': formatLeadSource(l.source),
     'الحالة': LEAD_STATUS_LABELS[l.status],
     'الوسوم': (l.tags ?? []).join(', '),
     'تاريخ الإضافة': new Date(l.created_at).toISOString().slice(0, 10),

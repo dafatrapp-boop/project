@@ -1,6 +1,7 @@
 'use client';
 
 import { useTransition } from 'react';
+import Link from 'next/link';
 import { Trash2 } from 'lucide-react';
 import { Select } from '@/components/ui/select';
 import { IconButton } from '@/components/ui/button';
@@ -20,25 +21,34 @@ export function MemberRow({
   name,
   role,
   isSelf,
+  missingName = false,
 }: {
   userId: string;
   name: string;
   role: MemberRole;
   isSelf: boolean;
+  missingName?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const { show } = useToast();
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md bg-surface-subtle p-3">
-      <div className="flex items-center gap-2.5">
+    <div className="flex flex-col gap-3 rounded-md bg-surface-subtle p-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-center gap-2.5">
         <Avatar name={name} size="sm" />
-        <p className="text-body-sm font-medium text-ink">
-          {name} {isSelf && <span className="text-ink-faint">(أنت)</span>}
-        </p>
+        <div className="min-w-0">
+          <p className="truncate text-body-sm font-medium text-ink">
+            {name} {isSelf && <span className="text-ink-faint">(أنت)</span>}
+          </p>
+          {isSelf && missingName && (
+            <Link href="/settings" className="text-caption font-medium text-brand-600 hover:underline">
+              أضف اسمك من الإعدادات
+            </Link>
+          )}
+        </div>
       </div>
       <div className="flex items-center gap-2">
-        <div className="w-36">
+        <div className="w-full sm:w-36">
           <Select
             value={role}
             disabled={pending || role === 'owner'}

@@ -40,8 +40,8 @@ export function CopyableValue({ value, dir = 'ltr' }: { value: string; dir?: 'lt
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2">
-      <p dir={dir} className="flex-1 truncate text-body-sm text-ink" title={value}>
+    <div className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-surface px-3 py-2">
+      <p dir={dir} className="min-w-0 flex-1 truncate text-body-sm text-ink" title={value}>
         {value}
       </p>
       <IconButton

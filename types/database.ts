@@ -237,6 +237,33 @@ export interface Database {
         };
         Update: Partial<Database['public']['Tables']['notifications']['Row']>;
       };
+      push_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth_key: string;
+          user_agent: string | null;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['push_subscriptions']['Row'], 'id' | 'created_at'> & {
+          id?: string;
+        };
+        Update: Partial<Database['public']['Tables']['push_subscriptions']['Row']>;
+      };
+      notification_preferences: {
+        Row: {
+          user_id: string;
+          push_enabled: boolean;
+          muted_types: string[];
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['notification_preferences']['Row']> & {
+          user_id: string;
+        };
+        Update: Partial<Database['public']['Tables']['notification_preferences']['Row']>;
+      };
       appointment_settings: {
         Row: {
           workspace_id: string;

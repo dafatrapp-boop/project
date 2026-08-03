@@ -4,6 +4,7 @@ import { GlobalSearch } from './global-search';
 import { NotificationBell } from './notification-bell';
 import { Breadcrumbs } from './breadcrumbs';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { HeaderInstallButton } from '@/components/pwa/install-app-control';
 
 // Phase 3: same data-fetching as before (plan lookup, plan-expiry RPC,
 // notification query) — only the JSX layout below changed, adding a
@@ -42,6 +43,7 @@ export async function Header({ workspaceId }: { workspaceId: string }) {
       <div className="flex flex-1 items-center justify-end gap-1.5">
         {showSearch && <GlobalSearch />}
         <ThemeToggle />
+        <HeaderInstallButton />
         {showNotifications && <NotificationBell notifications={notifications ?? []} />}
       </div>
     </header>

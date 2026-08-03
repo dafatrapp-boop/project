@@ -53,6 +53,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/onboarding') ||
     pathname.startsWith('/api/exports') ||
     pathname.startsWith('/api/search') ||
+    pathname.startsWith('/api/push') ||
     pathname.startsWith('/api/stripe/checkout') ||
     pathname.startsWith('/api/stripe/portal');
 
