@@ -7,23 +7,38 @@ import { CampaignsList, type CampaignRow } from './campaigns-list';
 import { PageGuide } from '@/components/guide/page-guide';
 import { getGuideDismissed } from '@/lib/guide/state';
 import { CAMPAIGNS_GUIDE } from '@/lib/guide/content';
+import { Pagination } from '@/components/ui/pagination';
+import { DEFAULT_PAGE_SIZE, getPageRange, parsePageParam, splitPage } from '@/lib/pagination';
 
-export default async function CampaignsListPage() {
+export default async function CampaignsListPage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
   const { supabase, workspaceId, user } = await requireWorkspace();
+  const page = parsePageParam(searchParams.page);
+  const [from, to] = getPageRange(page, DEFAULT_PAGE_SIZE);
 
-  const [guideDismissed, { data: campaigns }, { data: stats }] = await Promise.all([
+  const [guideDismissed, { data: campaignsRaw }] = await Promise.all([
     getGuideDismissed(supabase, user.id, 'campaigns'),
     supabase
       .from('campaigns')
       .select('id, name, platform, status')
       .eq('workspace_id', workspaceId)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('campaign_stats')
-      .select('campaign_id, leads_count, views_count')
-      .eq('workspace_id', workspaceId),
+      .order('created_at', { ascending: false })
+      .range(from, to),
   ]);
 
+  const { rows: campaigns, hasMore } = splitPage(campaignsRaw ?? [], DEFAULT_PAGE_SIZE);
+  const campaignIds = campaigns.map((c) => c.id);
+  const { data: stats } =
+    campaignIds.length > 0
+      ? await supabase
+          .from('campaign_stats')
+          .select('campaign_id, leads_count, views_count')
+          .eq('workspace_id', workspaceId)
+          .in('campaign_id', campaignIds)
+      : { data: [] };
   const statsById = new Map((stats ?? []).map((s) => [s.campaign_id, s]));
 
   const rows: CampaignRow[] = (campaigns ?? []).map((c) => ({
@@ -53,6 +68,8 @@ export default async function CampaignsListPage() {
       <PageGuide guideKey="campaigns" title={CAMPAIGNS_GUIDE.title} steps={CAMPAIGNS_GUIDE.steps} initiallyDismissed={guideDismissed} />
 
       <CampaignsList rows={rows} />
+
+      <Pagination page={page} hasMore={hasMore} searchParams={searchParams} basePath="/campaigns" />
     </div>
   );
 }

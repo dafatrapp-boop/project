@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
 import { SectionRenderer } from '@/components/landing-page/section-renderer';
 import { MetaPixelScript } from '@/components/landing-page/meta-pixel-script';
+import { Ga4Script } from '@/components/landing-page/ga4-script';
 import type { Section } from '@/lib/landing-pages/types';
 import { hasFeature, type Plan } from '@/lib/plans/constants';
 
@@ -67,6 +68,9 @@ export default async function PublicLandingPage({
   const { data: plan } = await supabase.rpc('get_public_workspace_plan', {
     p_landing_page_id: page.id,
   });
+  const { data: ga4Id } = await supabase.rpc('get_public_ga4_id', {
+    p_landing_page_id: page.id,
+  });
   const showBranding = hasFeature((plan ?? 'free') as Plan, 'showBranding');
 
   const sections = page.sections as Section[];
@@ -91,6 +95,7 @@ export default async function PublicLandingPage({
   return (
     <>
       {pixelId && <MetaPixelScript pixelId={pixelId} />}
+      {ga4Id && <Ga4Script measurementId={ga4Id} />}
       <main dir="rtl" className="min-h-screen bg-surface">
         {sections.map((section, i) => (
           <SectionRenderer

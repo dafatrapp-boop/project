@@ -38,9 +38,13 @@ export interface Database {
           stripe_customer_id: string | null;
           stripe_subscription_id: string | null;
           onboarding_dismissed_at: string | null;
+          agents_view_all_leads: boolean;
+          ga4_measurement_id: string | null;
+          default_whatsapp_number: string | null;
+          auto_assign_leads: boolean;
           created_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['workspaces']['Row'], 'id' | 'created_at' | 'meta_pixel_id' | 'plan' | 'plan_expires_at' | 'stripe_customer_id' | 'stripe_subscription_id' | 'onboarding_dismissed_at'> & {
+        Insert: Omit<Database['public']['Tables']['workspaces']['Row'], 'id' | 'created_at' | 'meta_pixel_id' | 'plan' | 'plan_expires_at' | 'stripe_customer_id' | 'stripe_subscription_id' | 'onboarding_dismissed_at' | 'agents_view_all_leads' | 'ga4_measurement_id' | 'default_whatsapp_number' | 'auto_assign_leads'> & {
           id?: string;
           meta_pixel_id?: string | null;
           plan?: 'free' | 'starter' | 'growth' | 'pro';
@@ -48,6 +52,10 @@ export interface Database {
           stripe_customer_id?: string | null;
           stripe_subscription_id?: string | null;
           onboarding_dismissed_at?: string | null;
+          agents_view_all_leads?: boolean;
+          ga4_measurement_id?: string | null;
+          default_whatsapp_number?: string | null;
+          auto_assign_leads?: boolean;
         };
         Update: Partial<Database['public']['Tables']['workspaces']['Row']>;
       };
@@ -74,12 +82,26 @@ export interface Database {
           assigned_to: string | null;
           notes: string | null;
           tags: string[];
+          estimated_value: number | null;
+          utm_source: string | null;
+          utm_medium: string | null;
+          utm_content: string | null;
+          utm_term: string | null;
+          custom_fields: Record<string, unknown>;
+          deleted_at: string | null;
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['leads']['Row'], 'id' | 'created_at' | 'updated_at' | 'tags'> & {
+        Insert: Omit<Database['public']['Tables']['leads']['Row'], 'id' | 'created_at' | 'updated_at' | 'tags' | 'estimated_value' | 'utm_source' | 'utm_medium' | 'utm_content' | 'utm_term' | 'custom_fields' | 'deleted_at'> & {
           id?: string;
           tags?: string[];
+          estimated_value?: number | null;
+          utm_source?: string | null;
+          utm_medium?: string | null;
+          utm_content?: string | null;
+          utm_term?: string | null;
+          custom_fields?: Record<string, unknown>;
+          deleted_at?: string | null;
         };
         Update: Partial<Database['public']['Tables']['leads']['Row']>;
       };
@@ -90,10 +112,12 @@ export interface Database {
           workspace_id: string;
           author_id: string;
           body: string;
+          note_type: 'general' | 'call' | 'meeting' | 'email' | 'whatsapp';
           created_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['lead_notes']['Row'], 'id' | 'created_at'> & {
+        Insert: Omit<Database['public']['Tables']['lead_notes']['Row'], 'id' | 'created_at' | 'note_type'> & {
           id?: string;
+          note_type?: 'general' | 'call' | 'meeting' | 'email' | 'whatsapp';
         };
         Update: Partial<Database['public']['Tables']['lead_notes']['Row']>;
       };
@@ -432,6 +456,57 @@ export interface Database {
         };
         Update: Partial<Database['public']['Tables']['reminders']['Row']>;
       };
+      custom_field_definitions: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          key: string;
+          label: string;
+          field_type: 'text' | 'number' | 'date' | 'select';
+          options: string[];
+          display_order: number;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['custom_field_definitions']['Row'], 'id' | 'created_at' | 'field_type' | 'options' | 'display_order'> & {
+          id?: string;
+          field_type?: 'text' | 'number' | 'date' | 'select';
+          options?: string[];
+          display_order?: number;
+        };
+        Update: Partial<Database['public']['Tables']['custom_field_definitions']['Row']>;
+      };
+      lead_attachments: {
+        Row: {
+          id: string;
+          lead_id: string;
+          workspace_id: string;
+          uploaded_by: string | null;
+          file_path: string;
+          file_name: string;
+          file_size: number;
+          content_type: string;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['lead_attachments']['Row'], 'id' | 'created_at'> & {
+          id?: string;
+        };
+        Update: Partial<Database['public']['Tables']['lead_attachments']['Row']>;
+      };
+      error_log: {
+        Row: {
+          id: string;
+          workspace_id: string | null;
+          user_id: string | null;
+          message: string;
+          stack: string | null;
+          url: string | null;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['error_log']['Row'], 'id' | 'created_at'> & {
+          id?: string;
+        };
+        Update: Partial<Database['public']['Tables']['error_log']['Row']>;
+      };
       push_delivery_log: {
         Row: {
           id: string;
@@ -500,6 +575,8 @@ export interface Database {
           p_utm_source?: string | null;
           p_utm_medium?: string | null;
           p_utm_campaign?: string | null;
+          p_utm_content?: string | null;
+          p_utm_term?: string | null;
         };
         Returns: string;
       };
@@ -508,6 +585,10 @@ export interface Database {
         Returns: boolean;
       };
       get_public_pixel_id: {
+        Args: { p_landing_page_id: string };
+        Returns: string | null;
+      };
+      get_public_ga4_id: {
         Args: { p_landing_page_id: string };
         Returns: string | null;
       };
@@ -569,6 +650,36 @@ export interface Database {
       process_due_follow_ups: {
         Args: { p_batch_size?: number };
         Returns: { follow_up_id: string; outcome: string }[];
+      };
+      soft_delete_lead: {
+        Args: { p_lead_id: string };
+        Returns: undefined;
+      };
+      list_deleted_leads: {
+        Args: { p_workspace_id: string };
+        Returns: Database['public']['Tables']['leads']['Row'][];
+      };
+      restore_lead: {
+        Args: { p_lead_id: string };
+        Returns: undefined;
+      };
+      purge_lead: {
+        Args: { p_lead_id: string };
+        Returns: undefined;
+      };
+      merge_leads: {
+        Args: { p_primary_lead_id: string; p_duplicate_lead_id: string };
+        Returns: undefined;
+      };
+      find_duplicate_lead_pairs: {
+        Args: { p_workspace_id: string };
+        Returns: {
+          primary_id: string;
+          primary_name: string;
+          duplicate_id: string;
+          duplicate_name: string;
+          matched_on: string;
+        }[];
       };
     };
   };

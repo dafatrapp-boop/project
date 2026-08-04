@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useTransition, type DragEvent } from 'react';
+import { useEffect, useState, useTransition, type DragEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeftRight, Phone } from 'lucide-react';
 import { updateLeadStatusAction } from '../actions';
+import { createClient } from '@/lib/supabase/client';
 import { LEAD_STATUS_LABELS, LEAD_STATUS_ORDER, type LeadStatus } from '@/lib/leads/constants';
 import { Badge } from '@/components/ui/badge';
 import { IconButton } from '@/components/ui/button';
@@ -17,6 +19,11 @@ export interface PipelineLead {
   phone: string | null;
   tags: string[];
   status: LeadStatus;
+  estimated_value: number | null;
+}
+
+function formatValue(value: number) {
+  return new Intl.NumberFormat('ar', { maximumFractionDigits: 0 }).format(value);
 }
 
 const COLUMN_TONE: Record<LeadStatus, string> = {
@@ -37,11 +44,38 @@ const COLUMN_TONE: Record<LeadStatus, string> = {
  * at all, since the old fallback was `sm:hidden`. Mouse drag-and-drop
  * still works exactly as before as a progressive-enhancement shortcut.
  */
-export function KanbanBoard({ initialLeads }: { initialLeads: PipelineLead[] }) {
+export function KanbanBoard({ initialLeads, workspaceId }: { initialLeads: PipelineLead[]; workspaceId: string }) {
   const [leads, setLeads] = useState(initialLeads);
   const [, startTransition] = useTransition();
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<LeadStatus | null>(null);
+  const router = useRouter();
+
+  // Keep local state in sync whenever the server re-renders this page
+  // with fresh props (e.g. after router.refresh() below).
+  useEffect(() => {
+    setLeads(initialLeads);
+  }, [initialLeads]);
+
+  // Realtime (migration 0039, gaps-checklist 6.1) — another user moving
+  // a card in a separate tab/session used to be invisible here until a
+  // manual reload. RLS still applies to what this subscription actually
+  // receives; this just avoids polling for it.
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`pipeline-${workspaceId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'leads', filter: `workspace_id=eq.${workspaceId}` },
+        () => router.refresh()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [workspaceId, router]);
 
   function moveLead(leadId: string, newStatus: LeadStatus) {
     setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, status: newStatus } : l)));
@@ -60,6 +94,7 @@ export function KanbanBoard({ initialLeads }: { initialLeads: PipelineLead[] }) 
     <div className="flex gap-4 overflow-x-auto pb-4">
       {LEAD_STATUS_ORDER.map((status) => {
         const columnLeads = leads.filter((l) => l.status === status);
+        const columnTotal = columnLeads.reduce((sum, l) => sum + (l.estimated_value ?? 0), 0);
         const isDropTarget = dragOverStatus === status;
         return (
           <div
@@ -80,6 +115,9 @@ export function KanbanBoard({ initialLeads }: { initialLeads: PipelineLead[] }) 
               <h3 className="text-body-sm font-semibold text-ink">{LEAD_STATUS_LABELS[status]}</h3>
               <Badge tone="neutral" size="sm">{columnLeads.length}</Badge>
             </div>
+            {columnTotal > 0 && (
+              <p className="px-1 text-caption text-ink-faint">إجمالي القيمة: {formatValue(columnTotal)}</p>
+            )}
 
             <div className="flex flex-col gap-2">
               {columnLeads.map((lead) => (

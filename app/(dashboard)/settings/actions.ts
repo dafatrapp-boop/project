@@ -40,7 +40,7 @@ export async function updateMetaPixelAction(formData: FormData) {
   const { supabase, workspaceId, role } = await requireWorkspace();
 
   if (role !== 'owner' && role !== 'admin') {
-    redirect('/settings?error=not_authorized');
+    redirect('/settings/integrations?error=not_authorized');
   }
 
   const raw = String(formData.get('metaPixelId') ?? '').trim();
@@ -55,10 +55,10 @@ export async function updateMetaPixelAction(formData: FormData) {
   // produced an empty string) looked like a successful save when
   // nothing valid had actually been stored.
   if (!raw) {
-    redirect('/settings?error=missing_pixel_id');
+    redirect('/settings/integrations?error=missing_pixel_id');
   }
   if (!/^\d{10,20}$/.test(raw)) {
-    redirect('/settings?error=invalid_pixel_id');
+    redirect('/settings/integrations?error=invalid_pixel_id');
   }
 
   const { error } = await supabase
@@ -67,11 +67,72 @@ export async function updateMetaPixelAction(formData: FormData) {
     .eq('id', workspaceId);
   if (error) {
     console.error('[workspaces] update/delete failed:', error);
-    redirect('/settings?error=save_failed');
+    redirect('/settings/integrations?error=save_failed');
   }
 
-  revalidatePath('/settings');
-  redirect('/settings?success=1');
+  revalidatePath('/settings/integrations');
+  redirect('/settings/integrations?success=1');
+}
+
+/** GA4 (architecture review 4.2) — same "merchant-owned, never
+ * generated" rule as Meta Pixel; empty value clears tracking. */
+export async function updateGa4Action(formData: FormData) {
+  const { supabase, workspaceId, role } = await requireWorkspace();
+
+  if (role !== 'owner' && role !== 'admin') {
+    redirect('/settings/integrations?error=not_authorized');
+  }
+
+  const raw = String(formData.get('ga4MeasurementId') ?? '').trim();
+  if (raw && !/^G-[A-Z0-9]{4,15}$/.test(raw)) {
+    redirect('/settings/integrations?error=invalid_ga4_id');
+  }
+
+  const { error } = await supabase
+    .from('workspaces')
+    .update({ ga4_measurement_id: raw || null })
+    .eq('id', workspaceId);
+  if (error) {
+    console.error('[workspaces] ga4 update failed:', error);
+    redirect('/settings/integrations?error=save_failed');
+  }
+
+  revalidatePath('/settings/integrations');
+  redirect('/settings/integrations?success=ga4');
+}
+
+/** Workspace-level default WhatsApp number — inherited by every new
+ * landing page at creation time (migration 0040) so it's only ever
+ * typed once instead of once per page. */
+export async function updateDefaultWhatsAppAction(formData: FormData) {
+  const { supabase, workspaceId, role } = await requireWorkspace();
+
+  if (role !== 'owner' && role !== 'admin') {
+    redirect('/settings/integrations?error=not_authorized');
+  }
+
+  const raw = String(formData.get('whatsapp') ?? '').trim();
+  let normalized: string | null = null;
+  if (raw) {
+    const { validateIraqiPhone } = await import('@/lib/phone');
+    const check = validateIraqiPhone(raw);
+    if (!check.valid) {
+      redirect(`/settings/integrations?error=${check.reason}`);
+    }
+    normalized = check.normalized!.replace('+', '');
+  }
+
+  const { error } = await supabase
+    .from('workspaces')
+    .update({ default_whatsapp_number: normalized })
+    .eq('id', workspaceId);
+  if (error) {
+    console.error('[workspaces] default whatsapp update failed:', error);
+    redirect('/settings/integrations?error=save_failed');
+  }
+
+  revalidatePath('/settings/integrations');
+  redirect('/settings/integrations?success=whatsapp');
 }
 
 export async function updateAppointmentSettingsAction(formData: FormData) {
@@ -118,6 +179,124 @@ export async function updateAppointmentSettingsAction(formData: FormData) {
 
   revalidatePath('/settings');
   redirect('/settings?success=appointments');
+}
+
+/**
+ * Controls whether plain 'agent' members see every lead in the
+ * workspace or only ones assigned to them (plus unassigned ones).
+ * Default (false) is the safe/restricted behavior added by the RLS fix
+ * in migration 0028 — this lets an owner/admin explicitly opt back
+ * into "everyone sees everything" for small teams that want it.
+ */
+export async function updateLeadVisibilityAction(formData: FormData) {
+  const { supabase, workspaceId, role } = await requireWorkspace();
+
+  if (role !== 'owner' && role !== 'admin') {
+    redirect('/settings?error=not_authorized');
+  }
+
+  const agentsViewAll = formData.get('agentsViewAllLeads') === 'on';
+
+  const { error } = await supabase
+    .from('workspaces')
+    .update({ agents_view_all_leads: agentsViewAll })
+    .eq('id', workspaceId);
+  if (error) {
+    console.error('[workspaces] lead visibility update failed:', error);
+    redirect('/settings?error=save_failed');
+  }
+
+  revalidatePath('/settings');
+  redirect('/settings?success=lead_visibility');
+}
+
+/**
+ * Round-robin lead assignment (migration 0040) — when on, a new lead
+ * with no explicit assignee is auto-assigned to whichever team member
+ * currently has the fewest open leads, instead of sitting unassigned
+ * until someone manually claims it.
+ */
+export async function updateAutoAssignAction(formData: FormData) {
+  const { supabase, workspaceId, role } = await requireWorkspace();
+
+  if (role !== 'owner' && role !== 'admin') {
+    redirect('/settings?error=not_authorized');
+  }
+
+  const autoAssign = formData.get('autoAssignLeads') === 'on';
+
+  const { error } = await supabase
+    .from('workspaces')
+    .update({ auto_assign_leads: autoAssign })
+    .eq('id', workspaceId);
+  if (error) {
+    console.error('[workspaces] auto-assign update failed:', error);
+    redirect('/settings?error=save_failed');
+  }
+
+  revalidatePath('/settings');
+  redirect('/settings?success=auto_assign');
+}
+
+/** Custom fields (migration 0033, product-gaps review ب.1) — lets an
+ * owner/admin define extra per-lead fields specific to their business
+ * (e.g. "تاريخ الميلاد" for a clinic, "الميزانية" for real estate). */
+export async function addCustomFieldAction(formData: FormData) {
+  const { supabase, workspaceId, role } = await requireWorkspace();
+  if (role !== 'owner' && role !== 'admin') {
+    redirect('/settings?error=not_authorized');
+  }
+
+  const label = String(formData.get('label') ?? '').trim();
+  const fieldType = String(formData.get('fieldType') ?? 'text');
+  const optionsRaw = String(formData.get('options') ?? '').trim();
+
+  if (!label) {
+    redirect('/settings?error=missing_field_label');
+  }
+  if (!['text', 'number', 'date', 'select'].includes(fieldType)) {
+    redirect('/settings?error=invalid_field_type');
+  }
+
+  const key = label
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 50);
+  const options = fieldType === 'select'
+    ? optionsRaw.split(',').map((o) => o.trim()).filter(Boolean)
+    : [];
+
+  const { error } = await supabase.from('custom_field_definitions').insert({
+    workspace_id: workspaceId,
+    key: key || `field_${Date.now()}`,
+    label,
+    field_type: fieldType as 'text' | 'number' | 'date' | 'select',
+    options,
+  });
+  if (error) {
+    console.error('[custom_field_definitions] insert failed:', error);
+    redirect('/settings?error=save_failed');
+  }
+
+  revalidatePath('/settings');
+  redirect('/settings?success=custom_field_added');
+}
+
+export async function deleteCustomFieldAction(fieldId: string) {
+  const { supabase, role } = await requireWorkspace();
+  if (role !== 'owner' && role !== 'admin') {
+    redirect('/settings?error=not_authorized');
+  }
+
+  const { error } = await supabase.from('custom_field_definitions').delete().eq('id', fieldId);
+  if (error) {
+    console.error('[custom_field_definitions] delete failed:', error);
+  }
+
+  revalidatePath('/settings');
+  redirect('/settings?success=custom_field_removed');
 }
 
 /** "أعد تفعيله من الإعدادات" — clears every dismissed in-app guide for

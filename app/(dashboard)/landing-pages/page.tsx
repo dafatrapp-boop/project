@@ -7,6 +7,8 @@ import { LandingPagesList } from './landing-pages-list';
 import { PageGuide } from '@/components/guide/page-guide';
 import { getGuideDismissed } from '@/lib/guide/state';
 import { LANDING_PAGES_GUIDE } from '@/lib/guide/content';
+import { Pagination } from '@/components/ui/pagination';
+import { DEFAULT_PAGE_SIZE, getPageRange, parsePageParam, splitPage } from '@/lib/pagination';
 
 const ERROR_MESSAGES: Record<string, string> = {
   plan_limit_reached: 'وصلت للحد الأقصى لعدد صفحات الهبوط في باقتك الحالية.',
@@ -17,18 +19,22 @@ const ERROR_MESSAGES: Record<string, string> = {
 export default async function LandingPagesListPage({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: { error?: string; page?: string };
 }) {
   const { supabase, workspaceId, user } = await requireWorkspace();
+  const page = parsePageParam(searchParams.page);
+  const [from, to] = getPageRange(page, DEFAULT_PAGE_SIZE);
 
-  const [{ data: pages }, guideDismissed] = await Promise.all([
+  const [{ data: pagesRaw }, guideDismissed] = await Promise.all([
     supabase
       .from('landing_pages')
       .select('id, title, slug, status, created_at')
       .eq('workspace_id', workspaceId)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .range(from, to),
     getGuideDismissed(supabase, user.id, 'landing_pages'),
   ]);
+  const { rows: pages, hasMore } = splitPage(pagesRaw ?? [], DEFAULT_PAGE_SIZE);
 
   return (
     <div className="flex flex-col gap-6">
@@ -58,7 +64,9 @@ export default async function LandingPagesListPage({
         </div>
       )}
 
-      <LandingPagesList pages={pages ?? []} />
+      <LandingPagesList pages={pages} />
+
+      <Pagination page={page} hasMore={hasMore} searchParams={searchParams} basePath="/landing-pages" />
     </div>
   );
 }

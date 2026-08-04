@@ -8,11 +8,19 @@ import { AppointmentsList, type AppointmentRow } from './appointments-list';
 import { PageGuide } from '@/components/guide/page-guide';
 import { getGuideDismissed } from '@/lib/guide/state';
 import { APPOINTMENTS_GUIDE } from '@/lib/guide/content';
+import { Pagination } from '@/components/ui/pagination';
+import { DEFAULT_PAGE_SIZE, getPageRange, parsePageParam, splitPage } from '@/lib/pagination';
 
-export default async function AppointmentsPage() {
+export default async function AppointmentsPage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
   const { supabase, workspaceId, user } = await requireWorkspace();
+  const page = parsePageParam(searchParams.page);
+  const [from, to] = getPageRange(page, DEFAULT_PAGE_SIZE);
 
-  const [{ data: settings }, { data: appointments }, guideDismissed] = await Promise.all([
+  const [{ data: settings }, { data: appointmentsRaw }, guideDismissed] = await Promise.all([
     supabase.from('appointment_settings').select('enabled').eq('workspace_id', workspaceId).single(),
     supabase
       .from('appointments')
@@ -20,11 +28,12 @@ export default async function AppointmentsPage() {
       .eq('workspace_id', workspaceId)
       .order('appointment_date', { ascending: true })
       .order('start_time', { ascending: true })
-      .limit(150),
+      .range(from, to),
     getGuideDismissed(supabase, user.id, 'appointments'),
   ]);
 
-  const rows = (appointments ?? []) as AppointmentRow[];
+  const { rows: appointments, hasMore } = splitPage(appointmentsRaw ?? [], DEFAULT_PAGE_SIZE);
+  const rows = appointments as AppointmentRow[];
 
   return (
     <div className="flex flex-col gap-6">
@@ -51,6 +60,8 @@ export default async function AppointmentsPage() {
       />
 
       <AppointmentsList rows={rows} />
+
+      <Pagination page={page} hasMore={hasMore} searchParams={searchParams} basePath="/appointments" />
     </div>
   );
 }

@@ -41,7 +41,7 @@ export default function ImportLeadsPage() {
     <div className="mx-auto flex max-w-lg flex-col gap-6">
       <PageHeader
         title="استيراد عملاء من CSV"
-        description="الأعمدة المدعومة: الاسم (مطلوب)، الهاتف، البريد الإلكتروني، المصدر."
+        description="الأعمدة المدعومة: الاسم (مطلوب)، الهاتف، البريد الإلكتروني، المصدر، الوسوم. يدعم أيضًا ملفات تصدير Google Contacts مباشرة بدون تعديل. العملاء المكررون (نفس الهاتف/البريد) يُتجاهلون تلقائيًا."
       />
 
       <Card>
@@ -63,7 +63,7 @@ export default function ImportLeadsPage() {
             {result.ok ? <CheckCircle2 size={16} className="mt-0.5 shrink-0" /> : <XCircle size={16} className="mt-0.5 shrink-0" />}
             <span>
               {result.ok
-                ? `تم استيراد ${result.imported} عميلًا بنجاح.${result.skipped ? ` تم تخطي ${result.skipped} صف غير صالح.` : ''}`
+                ? `تم استيراد ${result.imported} عميلًا بنجاح.${result.duplicates ? ` تم تجاهل ${result.duplicates} عميل مكرر (هاتف/بريد موجود مسبقًا).` : ''}${result.skipped ? ` تم تخطي ${result.skipped} صف غير صالح.` : ''}`
                 : result.error}
             </span>
           </div>

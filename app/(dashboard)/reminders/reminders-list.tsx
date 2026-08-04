@@ -12,6 +12,7 @@ import {
   type ReminderStatus,
 } from '@/lib/reminders/constants';
 import { cancelReminderAction } from './actions';
+import { Pagination } from '@/components/ui/pagination';
 
 export interface ReminderRow {
   id: string;
@@ -89,7 +90,19 @@ function ReminderCard({ reminder, overdue }: { reminder: ReminderRow; overdue?: 
   );
 }
 
-export function RemindersList({ upcoming, history }: { upcoming: ReminderRow[]; history: ReminderRow[] }) {
+export function RemindersList({
+  upcoming,
+  history,
+  historyPage = 1,
+  historyHasMore = false,
+  searchParams = {},
+}: {
+  upcoming: ReminderRow[];
+  history: ReminderRow[];
+  historyPage?: number;
+  historyHasMore?: boolean;
+  searchParams?: Record<string, string | undefined>;
+}) {
   const now = new Date();
 
   const overdue = upcoming.filter((r) => r.status === 'pending' && new Date(r.scheduled_at) < now);
@@ -143,6 +156,13 @@ export function RemindersList({ upcoming, history }: { upcoming: ReminderRow[]; 
               <ReminderCard key={r.id} reminder={r} />
             ))}
           </ul>
+          <Pagination
+            page={historyPage}
+            hasMore={historyHasMore}
+            searchParams={searchParams}
+            basePath="/reminders"
+            paramName="hpage"
+          />
         </div>
       )}
     </div>

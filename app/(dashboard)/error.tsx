@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { reportClientError } from '@/lib/error-log/report';
 
 export default function DashboardError({
   error,
@@ -11,10 +12,8 @@ export default function DashboardError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // In production this is where a monitoring integration (Sentry, etc.)
-    // would report the error — none is wired up here (no service is
-    // configured), so this is just a console log for now.
     console.error(error);
+    reportClientError(error);
   }, [error]);
 
   return (

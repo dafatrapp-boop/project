@@ -16,7 +16,6 @@ import { AuthAlert } from '@/components/auth/auth-alert';
  */
 export default function ResetPasswordConfirmPage() {
   const router = useRouter();
-  const supabase = createClient();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +35,16 @@ export default function ResetPasswordConfirmPage() {
     }
 
     setLoading(true);
+    // Constructed here rather than at component render scope: this page
+    // has no server-side dynamic signal (no cookies()/headers() call,
+    // unlike every sibling auth page which uses the server client), so
+    // Next.js statically prerenders it at build time — calling
+    // createBrowserClient() during that render pass throws if
+    // NEXT_PUBLIC_SUPABASE_URL/ANON_KEY aren't present in the build
+    // environment (e.g. a CI build without secrets configured), which
+    // broke `next build` entirely. Deferring creation into the actual
+    // submit handler means it only ever runs in the browser, post-mount.
+    const supabase = createClient();
     const { error: updateError } = await supabase.auth.updateUser({ password });
     setLoading(false);
 

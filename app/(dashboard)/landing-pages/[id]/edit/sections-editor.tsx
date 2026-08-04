@@ -16,6 +16,8 @@ import {
   PanelBottom,
   Monitor,
   Smartphone,
+  BarChart3,
+  HelpCircle,
   type LucideIcon,
 } from 'lucide-react';
 import { Button, IconButton } from '@/components/ui/button';
@@ -37,20 +39,24 @@ import { updateSectionsAction } from '../../actions';
 const ADDABLE_TYPES: Section['type'][] = [
   'hero',
   'features',
-  'cta',
+  'social_proof',
   'form',
   'testimonials',
+  'faq',
   'appointment_booking',
+  'cta',
   'footer',
 ];
 
 const SECTION_TYPE_ICON: Record<Section['type'], LucideIcon> = {
   hero: ImageIcon,
   features: LayoutGrid,
+  social_proof: BarChart3,
   cta: MousePointerClick,
   form: ClipboardList,
   testimonials: MessageSquareQuote,
   appointment_booking: CalendarClock,
+  faq: HelpCircle,
   footer: PanelBottom,
 };
 
@@ -61,6 +67,8 @@ function sectionSummary(section: Section): string {
       return section.headline || 'بدون عنوان بعد';
     case 'features':
       return `${section.items.length} ميزة`;
+    case 'social_proof':
+      return `${section.stats.length} رقم`;
     case 'cta':
       return section.headline || 'بدون عنوان بعد';
     case 'form':
@@ -69,6 +77,8 @@ function sectionSummary(section: Section): string {
       return section.title || 'بدون عنوان بعد';
     case 'appointment_booking':
       return section.title || 'بدون عنوان بعد';
+    case 'faq':
+      return `${section.items.length} سؤال`;
     case 'footer':
       return section.text || '—';
   }
@@ -273,6 +283,109 @@ export function SectionsEditor({
                                 </div>
                               </div>
                             ))}
+                          </div>
+                        )}
+
+                        {section.type === 'social_proof' && (
+                          <div className="flex flex-col gap-3">
+                            {section.stats.map((stat, statIndex) => (
+                              <div key={statIndex} className="grid grid-cols-1 gap-2 rounded-md bg-surface-subtle p-3 sm:grid-cols-[1fr_1fr_auto]">
+                                <Input
+                                  label="الرقم"
+                                  value={stat.value}
+                                  onChange={(e) => {
+                                    const stats = [...section.stats];
+                                    stats[statIndex] = { ...stat, value: e.target.value };
+                                    update(index, { stats });
+                                  }}
+                                />
+                                <Input
+                                  label="الوصف"
+                                  value={stat.label}
+                                  onChange={(e) => {
+                                    const stats = [...section.stats];
+                                    stats[statIndex] = { ...stat, label: e.target.value };
+                                    update(index, { stats });
+                                  }}
+                                />
+                                <IconButton
+                                  variant="ghost"
+                                  size="sm"
+                                  className="self-end hover:bg-danger-50 hover:text-danger"
+                                  aria-label="حذف الرقم"
+                                  onClick={() => {
+                                    const stats = section.stats.filter((_, i) => i !== statIndex);
+                                    update(index, { stats });
+                                  }}
+                                >
+                                  <Trash2 size={15} />
+                                </IconButton>
+                              </div>
+                            ))}
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="self-start"
+                              onClick={() => update(index, { stats: [...section.stats, { value: '', label: '' }] })}
+                            >
+                              <Plus size={14} />
+                              إضافة رقم
+                            </Button>
+                          </div>
+                        )}
+
+                        {section.type === 'faq' && (
+                          <div className="flex flex-col gap-3">
+                            <Input
+                              label="عنوان القسم"
+                              value={section.title}
+                              onChange={(e) => update(index, { title: e.target.value })}
+                            />
+                            {section.items.map((item, itemIndex) => (
+                              <div key={itemIndex} className="flex flex-col gap-2 rounded-md bg-surface-subtle p-3">
+                                <Input
+                                  label={`السؤال ${itemIndex + 1}`}
+                                  value={item.question}
+                                  onChange={(e) => {
+                                    const items = [...section.items];
+                                    items[itemIndex] = { ...item, question: e.target.value };
+                                    update(index, { items });
+                                  }}
+                                />
+                                <Input
+                                  label="الإجابة"
+                                  value={item.answer}
+                                  onChange={(e) => {
+                                    const items = [...section.items];
+                                    items[itemIndex] = { ...item, answer: e.target.value };
+                                    update(index, { items });
+                                  }}
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="self-start hover:bg-danger-50 hover:text-danger"
+                                  onClick={() => {
+                                    const items = section.items.filter((_, i) => i !== itemIndex);
+                                    update(index, { items });
+                                  }}
+                                >
+                                  <Trash2 size={14} />
+                                  حذف السؤال
+                                </Button>
+                              </div>
+                            ))}
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="self-start"
+                              onClick={() =>
+                                update(index, { items: [...section.items, { question: '', answer: '' }] })
+                              }
+                            >
+                              <Plus size={14} />
+                              إضافة سؤال
+                            </Button>
                           </div>
                         )}
 

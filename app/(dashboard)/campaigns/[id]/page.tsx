@@ -17,6 +17,8 @@ import {
 import { LEAD_STATUS_LABELS, LEAD_STATUS_TONE, ACTIVITY_LABELS, type LeadStatus } from '@/lib/leads/constants';
 import { digitsOnly, whatsAppLink } from '@/lib/utils';
 import { CampaignStatusSelect } from './status-select';
+import { Pagination } from '@/components/ui/pagination';
+import { DEFAULT_PAGE_SIZE, getPageRange, parsePageParam, splitPage } from '@/lib/pagination';
 
 interface LeadRow {
   id: string;
@@ -26,8 +28,16 @@ interface LeadRow {
   created_at: string;
 }
 
-export default async function CampaignDetailPage({ params }: { params: { id: string } }) {
+export default async function CampaignDetailPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams: { page?: string };
+}) {
   const { supabase, workspaceId } = await requireWorkspace();
+  const page = parsePageParam(searchParams.page);
+  const [from, to] = getPageRange(page, DEFAULT_PAGE_SIZE);
 
   const { data: campaign } = await supabase
     .from('campaigns')
@@ -38,7 +48,7 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
 
   if (!campaign) notFound();
 
-  const [{ data: stats }, { data: leads }, { data: activities }] = await Promise.all([
+  const [{ data: stats }, { data: leadsRaw }, { data: activities }] = await Promise.all([
     supabase
       .from('campaign_stats')
       .select('leads_count, won_count, views_count')
@@ -48,7 +58,8 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
       .from('leads')
       .select('id, full_name, phone, status, created_at')
       .eq('campaign_id', campaign.id)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .range(from, to),
     // Additive read-only query: aggregates the existing lead_activities
     // table (already scoped by workspace_id, unchanged RLS) for every
     // lead tied to this campaign — answers the Phase 4.2 "activity
@@ -61,6 +72,8 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
       .order('created_at', { ascending: false })
       .limit(15),
   ]);
+
+  const { rows: leads, hasMore } = splitPage(leadsRaw ?? [], DEFAULT_PAGE_SIZE);
 
   const landingPageRaw = campaign.landing_pages as
     | { title: string; slug: string }
@@ -117,13 +130,13 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
             <div className="p-4 pb-0">
               <CardHeader
                 title="العملاء المحتملون المرتبطون بهذه الحملة"
-                action={<Badge tone="neutral" size="sm">{leads?.length ?? 0}</Badge>}
+                action={<Badge tone="neutral" size="sm">{stats?.leads_count ?? leads.length}</Badge>}
               />
             </div>
             <div className="p-4 pt-0">
               <Table<LeadRow>
                 keyField={(row) => row.id}
-                rows={leads ?? []}
+                rows={leads}
                 emptyIcon={Users}
                 emptyTitle="لا يوجد عملاء محتملون بعد"
                 emptyMessage="لا يوجد عملاء محتملون مرتبطون بهذه الحملة بعد."
@@ -158,6 +171,12 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
                   },
                   { header: 'التاريخ', cell: (row) => new Date(row.created_at).toLocaleDateString('ar-SA') },
                 ]}
+              />
+              <Pagination
+                page={page}
+                hasMore={hasMore}
+                searchParams={searchParams}
+                basePath={`/campaigns/${campaign.id}`}
               />
             </div>
           </Card>

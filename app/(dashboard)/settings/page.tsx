@@ -1,4 +1,5 @@
-import { Building2, ShieldCheck, CreditCard } from 'lucide-react';
+import Link from 'next/link';
+import { Building2, ShieldCheck, CreditCard, AlertTriangle, ChevronLeft, Plug, Trash2 } from 'lucide-react';
 import { requireWorkspace } from '@/lib/workspace';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select } from '@/components/ui/select';
 import { Card, CardHeader } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
-import { hasFeature, PLAN_LABELS } from '@/lib/plans/constants';
+import { PLAN_LABELS } from '@/lib/plans/constants';
 import { WEEKDAY_LABELS, WEEKDAY_ORDER } from '@/lib/appointments/constants';
 import { PageGuide } from '@/components/guide/page-guide';
 import { getGuideDismissed } from '@/lib/guide/state';
@@ -15,26 +16,39 @@ import { WorkspaceTabs } from '@/components/layout/workspace-tabs';
 import { PushNotificationToggle } from '@/components/pwa/push-toggle';
 import {
   updateProfileAction,
-  updateMetaPixelAction,
   updateAppointmentSettingsAction,
+  updateLeadVisibilityAction,
+  updateAutoAssignAction,
+  addCustomFieldAction,
+  deleteCustomFieldAction,
   resetGuidesAction,
 } from './actions';
 
+const FIELD_TYPE_LABELS: Record<string, string> = {
+  text: 'نص',
+  number: 'رقم',
+  date: 'تاريخ',
+  select: 'قائمة خيارات',
+};
+
 const ERROR_MESSAGES: Record<string, string> = {
-  invalid_pixel_id: 'رقم Meta Pixel غير صالح — يجب أن يتكون من أرقام فقط (10-20 رقمًا).',
-  missing_pixel_id: 'يرجى إدخال رقم Meta Pixel — لا يمكن حفظ الحقل فارغًا.',
   save_failed: 'تعذر الحفظ. حاول مرة أخرى.',
   not_authorized: 'يلزم أن تكون مالكًا أو مشرفًا لتعديل هذا الإعداد.',
   invalid_hours: 'وقت البداية يجب أن يكون قبل وقت النهاية.',
   missing_working_days: 'اختر يومًا واحدًا على الأقل من أيام العمل.',
   missing_name: 'يرجى إدخال الاسم — لا يمكن حفظ الحقل فارغًا.',
+  missing_field_label: 'يرجى إدخال اسم للحقل.',
+  invalid_field_type: 'نوع حقل غير صالح.',
 };
 
 const SUCCESS_MESSAGES: Record<string, string> = {
-  '1': 'تم حفظ رقم Meta Pixel بنجاح.',
   appointments: 'تم حفظ إعدادات المواعيد بنجاح.',
   guides_reset: 'تمت إعادة تفعيل جميع الإرشادات — ستظهر من جديد أثناء تصفحك.',
   profile: 'تم حفظ اسمك بنجاح.',
+  lead_visibility: 'تم حفظ إعدادات خصوصية العملاء بنجاح.',
+  custom_field_added: 'تمت إضافة الحقل المخصص بنجاح.',
+  custom_field_removed: 'تم حذف الحقل المخصص.',
+  auto_assign: 'تم حفظ إعدادات توزيع العملاء بنجاح.',
 };
 
 const SLOT_DURATIONS = [15, 20, 30, 45, 60, 90];
@@ -44,15 +58,24 @@ export default async function SettingsPage({
 }: {
   searchParams: { error?: string; success?: string };
 }) {
-  const { supabase, user, workspaceId, role, name, metaPixelId, plan } = await requireWorkspace();
-  const pixelAllowed = hasFeature(plan, 'metaPixel');
+  const { supabase, user, workspaceId, role, name, plan } = await requireWorkspace();
 
   // All three only depend on workspaceId/user.id, both already resolved
   // above — previously three separate sequential awaits.
-  const [{ data: appointmentSettings }, guideDismissed, { data: profile }] = await Promise.all([
+  const [{ data: appointmentSettings }, guideDismissed, { data: profile }, { data: workspaceRow }, { data: customFields }] = await Promise.all([
     supabase.from('appointment_settings').select('*').eq('workspace_id', workspaceId).single(),
     getGuideDismissed(supabase, user.id, 'settings'),
     supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
+    supabase
+      .from('workspaces')
+      .select('agents_view_all_leads, auto_assign_leads')
+      .eq('id', workspaceId)
+      .maybeSingle(),
+    supabase
+      .from('custom_field_definitions')
+      .select('id, label, field_type, options')
+      .eq('workspace_id', workspaceId)
+      .order('display_order', { ascending: true }),
   ]);
 
   const ROLE_LABELS: Record<string, string> = { owner: 'مالك', admin: 'مشرف', member: 'عضو' };
@@ -118,33 +141,124 @@ export default async function SettingsPage({
         </dl>
       </Card>
 
-      <Card className="max-w-2xl">
-        <CardHeader
-          title="Meta Pixel"
-          action={!pixelAllowed ? <Badge tone="warning" size="sm">يتطلب باقة أساسية أو أعلى</Badge> : undefined}
-        />
-        <p className="mb-4 text-body-sm text-ink-muted">
-          أدخل رقم Meta Pixel الخاص بحسابك الإعلاني (من Meta Events Manager) لتفعيل تتبع الزيارات
-          والتحويلات على صفحات الهبوط المنشورة. لن نُنشئ أو نخمّن هذا الرقم نيابةً عنك.
-          {!pixelAllowed && ' يمكنك حفظ الرقم الآن، لكنه لن يُفعَّل فعليًا على صفحاتك إلا بعد الترقية.'}
-        </p>
+      {(role === 'owner' || role === 'admin') && (
+        <Card className="max-w-2xl">
+          <Link href="/errors" className="flex items-center justify-between gap-2 text-body-sm font-medium text-ink hover:text-brand-600">
+            <span className="flex items-center gap-2">
+              <AlertTriangle size={16} className="text-ink-faint" />
+              سجل الأخطاء
+            </span>
+            <ChevronLeft size={16} className="text-ink-faint" />
+          </Link>
+        </Card>
+      )}
 
-        <form action={updateMetaPixelAction} className="flex flex-col gap-3">
-          <Input
-            name="metaPixelId"
-            label="Meta Pixel ID"
-            placeholder="مثال: 1234567890123456"
-            defaultValue={metaPixelId ?? ''}
-            required
-            pattern="\d{10,20}"
-            title="أرقام فقط، من 10 إلى 20 رقمًا"
-            hint="مطلوب — أرقام فقط (10 إلى 20 رقمًا)، من Meta Events Manager."
-            dir="ltr"
-          />
-          <Button type="submit" variant="secondary" className="self-start">
-            حفظ
-          </Button>
-        </form>
+      {(role === 'owner' || role === 'admin') && (
+        <Card className="max-w-2xl">
+          <CardHeader title="خصوصية العملاء المحتملين" />
+          <p className="mb-4 text-body-sm text-ink-muted">
+            افتراضيًا، يرى عضو الفريق (دور &quot;عضو&quot;) فقط العملاء المحتملين المسندين إليه، بالإضافة إلى
+            غير المُسندين. فعّل هذا الخيار إذا كنت تريد أن يرى كل أعضاء الفريق كل العملاء المحتملين.
+          </p>
+          <form action={updateLeadVisibilityAction} className="flex flex-col gap-3">
+            <label className="flex items-center gap-2 text-body-sm font-medium text-ink">
+              <input
+                type="checkbox"
+                name="agentsViewAllLeads"
+                defaultChecked={workspaceRow?.agents_view_all_leads ?? false}
+                className="h-4 w-4 rounded border-border accent-brand-500"
+              />
+              يرى كل الأعضاء كل العملاء المحتملين
+            </label>
+            <Button type="submit" variant="secondary" className="self-start">
+              حفظ
+            </Button>
+          </form>
+        </Card>
+      )}
+
+      {(role === 'owner' || role === 'admin') && (
+        <Card className="max-w-2xl">
+          <CardHeader title="توزيع العملاء تلقائيًا" />
+          <p className="mb-4 text-body-sm text-ink-muted">
+            بدلًا من ترك كل عميل جديد بلا مسؤول حتى يتدخل أحد يدويًا، وزّعه تلقائيًا على العضو الذي لديه أقل عدد
+            من العملاء النشطين حاليًا — توزيع عادل بدون أي إعداد إضافي.
+          </p>
+          <form action={updateAutoAssignAction} className="flex flex-col gap-3">
+            <label className="flex items-center gap-2 text-body-sm font-medium text-ink">
+              <input
+                type="checkbox"
+                name="autoAssignLeads"
+                defaultChecked={workspaceRow?.auto_assign_leads ?? false}
+                className="h-4 w-4 rounded border-border accent-brand-500"
+              />
+              توزيع العملاء الجدد تلقائيًا على الفريق
+            </label>
+            <Button type="submit" variant="secondary" className="self-start">
+              حفظ
+            </Button>
+          </form>
+        </Card>
+      )}
+
+      {(role === 'owner' || role === 'admin') && (
+        <Card className="max-w-2xl">
+          <CardHeader title="الحقول المخصصة" description="أضف حقولًا خاصة بنشاطك تظهر في صفحة كل عميل محتمل." />
+          <div className="mb-4 flex flex-col gap-2">
+            {(customFields ?? []).length === 0 && (
+              <p className="text-body-sm text-ink-faint">لا توجد حقول مخصصة بعد.</p>
+            )}
+            {(customFields ?? []).map((f) => (
+              <div key={f.id} className="flex items-center justify-between gap-3 rounded-md bg-surface-subtle px-3 py-2">
+                <div>
+                  <p className="text-body-sm font-medium text-ink">{f.label}</p>
+                  <p className="text-caption text-ink-faint">
+                    {FIELD_TYPE_LABELS[f.field_type] ?? f.field_type}
+                    {f.field_type === 'select' && f.options?.length ? ` — ${f.options.join('، ')}` : ''}
+                  </p>
+                </div>
+                <form action={deleteCustomFieldAction.bind(null, f.id)}>
+                  <button
+                    type="submit"
+                    aria-label={`حذف حقل ${f.label}`}
+                    className="rounded-md p-1.5 text-ink-faint transition-colors hover:bg-danger-50 hover:text-danger"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </form>
+              </div>
+            ))}
+          </div>
+          <form action={addCustomFieldAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="flex-1">
+              <Input name="label" label="اسم الحقل" placeholder="مثال: تاريخ الميلاد" required />
+            </div>
+            <div className="sm:w-40">
+              <Select name="fieldType" label="النوع" defaultValue="text">
+                <option value="text">نص</option>
+                <option value="number">رقم</option>
+                <option value="date">تاريخ</option>
+                <option value="select">قائمة خيارات</option>
+              </Select>
+            </div>
+            <div className="flex-1">
+              <Input name="options" label="خيارات (مفصولة بفاصلة، لنوع القائمة فقط)" placeholder="خيار 1، خيار 2" />
+            </div>
+            <Button type="submit" variant="secondary" className="sm:w-auto">
+              إضافة
+            </Button>
+          </form>
+        </Card>
+      )}
+
+      <Card className="max-w-2xl">
+        <Link href="/settings/integrations" className="flex items-center justify-between gap-2 text-body-sm font-medium text-ink hover:text-brand-600">
+          <span className="flex items-center gap-2">
+            <Plug size={16} className="text-ink-faint" />
+            التكاملات (واتساب، Meta Pixel، Google Analytics)
+          </span>
+          <ChevronLeft size={16} className="text-ink-faint" />
+        </Link>
       </Card>
 
       {appointmentSettings && (

@@ -14,6 +14,7 @@ export function digitsOnly(phone: string) {
   return phone.replace(/[^\d+]/g, '');
 }
 
-export function whatsAppLink(phone: string) {
-  return `https://wa.me/${digitsOnly(phone).replace(/^\+/, '')}`;
+export function whatsAppLink(phone: string, message?: string) {
+  const base = `https://wa.me/${digitsOnly(phone).replace(/^\+/, '')}`;
+  return message ? `${base}?text=${encodeURIComponent(message)}` : base;
 }

@@ -44,18 +44,18 @@ export function SectionRenderer({
             <img
               src={section.imageUrl}
               alt=""
-              className="mx-auto mb-6 max-h-64 w-auto rounded-lg object-cover shadow-card"
+              className="mx-auto mb-6 max-h-64 w-full max-w-md rounded-lg object-cover shadow-card sm:max-h-80"
             />
           )}
-          <h1 className="mx-auto max-w-2xl text-3xl font-bold text-ink sm:text-4xl">
+          <h1 className="mx-auto max-w-3xl break-words text-3xl font-bold leading-tight text-ink sm:text-4xl lg:text-5xl">
             {section.headline}
           </h1>
-          <p className="mx-auto mt-4 max-w-xl text-base text-ink-muted sm:text-lg">
+          <p className="mx-auto mt-4 max-w-xl break-words text-base text-ink-muted sm:text-lg lg:text-xl">
             {section.subheadline}
           </p>
           <WhatsAppLink
             href={whatsappHref ?? '#'}
-            className="mt-8 inline-flex h-12 items-center justify-center rounded-md bg-brand-500 px-6 text-base font-medium text-white hover:bg-brand-600"
+            className="mt-8 inline-flex h-12 items-center justify-center rounded-md bg-brand-500 px-6 text-base font-medium text-white shadow-glow transition-colors hover:bg-brand-600 sm:h-14 sm:px-8 sm:text-lg"
           >
             {section.ctaLabel}
           </WhatsAppLink>
@@ -68,19 +68,33 @@ export function SectionRenderer({
           <h2 className="mb-8 text-center text-2xl font-semibold text-ink sm:text-3xl">
             {section.title}
           </h2>
-          <div className="mx-auto grid max-w-4xl grid-cols-1 gap-6 sm:grid-cols-3">
+          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
             {section.items.map((item, i) => (
-              <div key={i} className="rounded-lg border border-border bg-surface p-5 text-center">
+              <div key={i} className="rounded-lg border border-border bg-surface p-5 text-center transition-shadow hover:shadow-card">
                 {item.imageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={item.imageUrl}
                     alt=""
-                    className="mx-auto mb-3 h-32 w-full rounded-md object-cover"
+                    className="mx-auto mb-3 aspect-video w-full rounded-md object-cover"
                   />
                 )}
-                <h3 className="mb-2 text-base font-semibold text-ink">{item.title}</h3>
-                <p className="text-sm text-ink-muted">{item.description}</p>
+                <h3 className="mb-2 break-words text-base font-semibold text-ink">{item.title}</h3>
+                <p className="break-words text-sm text-ink-muted">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      );
+
+    case 'social_proof':
+      return (
+        <section className="border-y border-border bg-surface-subtle px-6 py-10">
+          <div className="mx-auto grid max-w-3xl grid-cols-2 gap-6 text-center sm:grid-cols-3">
+            {section.stats.map((stat, i) => (
+              <div key={i}>
+                <p className="text-2xl font-bold text-brand-600 sm:text-3xl">{stat.value}</p>
+                <p className="mt-1 text-sm text-ink-muted">{stat.label}</p>
               </div>
             ))}
           </div>
@@ -90,10 +104,12 @@ export function SectionRenderer({
     case 'cta':
       return (
         <section className="bg-brand-600 px-6 py-14 text-center sm:py-20">
-          <h2 className="text-2xl font-semibold text-white sm:text-3xl">{section.headline}</h2>
+          <h2 className="mx-auto max-w-2xl break-words text-2xl font-semibold text-white sm:text-3xl">
+            {section.headline}
+          </h2>
           <WhatsAppLink
             href={whatsappHref ?? '#'}
-            className="mt-6 inline-flex h-12 items-center justify-center rounded-md bg-white px-6 text-base font-medium text-brand-700 hover:bg-brand-50"
+            className="mt-6 inline-flex h-12 items-center justify-center rounded-md bg-white px-6 text-base font-medium text-brand-700 transition-colors hover:bg-brand-50 sm:h-14 sm:px-8 sm:text-lg"
           >
             {section.buttonLabel}
           </WhatsAppLink>
@@ -170,6 +186,29 @@ export function SectionRenderer({
               </button>
             </div>
             <p className="mt-3 text-xs text-ink-faint">معاينة فقط — الحجز الفعلي يعمل في الصفحة المنشورة</p>
+          </div>
+        </section>
+      );
+
+    case 'faq':
+      return (
+        <section className="px-6 py-14 sm:py-20">
+          <h2 className="mb-8 text-center text-2xl font-semibold text-ink sm:text-3xl">
+            {section.title}
+          </h2>
+          <div className="mx-auto flex max-w-2xl flex-col gap-3">
+            {section.items.map((item, i) => (
+              // Native <details>/<summary> — a real, accessible accordion
+              // with zero client-side JS, so this stays a plain server-
+              // rendered section like every other one here.
+              <details key={i} className="group rounded-lg border border-border bg-surface p-4">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-start text-base font-medium text-ink">
+                  {item.question}
+                  <span className="shrink-0 text-ink-faint transition-transform group-open:rotate-45">+</span>
+                </summary>
+                <p className="mt-3 text-sm text-ink-muted">{item.answer}</p>
+              </details>
+            ))}
           </div>
         </section>
       );

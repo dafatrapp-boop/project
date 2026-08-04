@@ -52,6 +52,18 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/activity') ||
     pathname.startsWith('/settings') ||
     pathname.startsWith('/onboarding') ||
+    // These four route groups (orders/appointments/testimonials/
+    // automations) were added after the last middleware audit
+    // (PRODUCTION_AUDIT.md's "Team + Plans" pass) and were never added
+    // here — found during this review. Not an actual security hole
+    // (every page under them still calls requireWorkspace() itself,
+    // which redirects unauthenticated users regardless), just the same
+    // extra-round-trip gap that audit already fixed for other routes.
+    pathname.startsWith('/orders') ||
+    pathname.startsWith('/appointments') ||
+    pathname.startsWith('/testimonials') ||
+    pathname.startsWith('/automations') ||
+    pathname.startsWith('/errors') ||
     pathname.startsWith('/api/exports') ||
     pathname.startsWith('/api/search') ||
     // /api/push/vapid-public-key deliberately excluded — it's a

@@ -5,6 +5,9 @@ import { useSearchParams } from 'next/navigation';
 import { submitLeadFormAction } from './actions';
 import { trackPixelEvent } from '@/lib/meta-pixel/client';
 import { validateIraqiPhone, phoneErrorMessage } from '@/lib/phone';
+import { TurnstileWidget } from '@/components/landing-page/turnstile-widget';
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 interface FormSectionProps {
   landingPageId: string;
@@ -56,6 +59,7 @@ function LeadFormInner({
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState('');
 
   const ERROR_MESSAGES: Record<string, string> = {
     missing_fields: 'يرجى إدخال الاسم ورقم الهاتف أو البريد الإلكتروني.',
@@ -63,6 +67,7 @@ function LeadFormInner({
     rate_limited: 'تم إرسال عدة طلبات، يرجى المحاولة لاحقًا.',
     submit_failed: 'تعذر إرسال الطلب. حاول مرة أخرى.',
     rejected: 'تعذر إرسال الطلب.',
+    captcha_failed: 'تعذر التحقق من أنك لست روبوتًا. حاول مرة أخرى.',
   };
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -87,6 +92,9 @@ function LeadFormInner({
     formData.set('utm_source', searchParams.get('utm_source') ?? '');
     formData.set('utm_medium', searchParams.get('utm_medium') ?? '');
     formData.set('utm_campaign', searchParams.get('utm_campaign') ?? '');
+    formData.set('utm_content', searchParams.get('utm_content') ?? '');
+    formData.set('utm_term', searchParams.get('utm_term') ?? '');
+    formData.set('turnstile_token', turnstileToken);
 
     startTransition(async () => {
       const result = await submitLeadFormAction(landingPageId, formData);
@@ -151,9 +159,12 @@ function LeadFormInner({
             placeholder="البريد الإلكتروني (اختياري)"
             className="h-11 rounded-md border border-border bg-surface px-3 text-sm text-ink placeholder:text-ink-faint focus-visible:border-brand-500"
           />
+          {TURNSTILE_SITE_KEY && (
+            <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} onToken={setTurnstileToken} />
+          )}
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || (Boolean(TURNSTILE_SITE_KEY) && !turnstileToken)}
             className="mt-1 h-11 rounded-md bg-brand-500 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-60"
           >
             {pending ? 'جارٍ الإرسال...' : submitLabel}

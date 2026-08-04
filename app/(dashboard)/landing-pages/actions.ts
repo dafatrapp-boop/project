@@ -32,6 +32,15 @@ export async function createLandingPageAction(formData: FormData) {
   const template = TEMPLATES.find((t) => t.id === templateId) ?? TEMPLATES[TEMPLATES.length - 1];
   const baseSlug = slugify(title);
 
+  // Inherit the workspace-level default so a merchant with N pages
+  // doesn't have to re-type the same WhatsApp number N times — still
+  // fully overridable per page from its own settings tab afterward.
+  const { data: workspaceRow } = await supabase
+    .from('workspaces')
+    .select('default_whatsapp_number')
+    .eq('id', workspaceId)
+    .maybeSingle();
+
   const { data, error } = await insertWithUniqueSlug<{ id: string }>(
     (slug) =>
       supabase
@@ -43,7 +52,7 @@ export async function createLandingPageAction(formData: FormData) {
           template: template.id,
           status: 'draft',
           sections: template.sections,
-          whatsapp_number: null,
+          whatsapp_number: workspaceRow?.default_whatsapp_number ?? null,
           meta_title: null,
           meta_description: null,
         })

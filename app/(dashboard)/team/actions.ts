@@ -4,10 +4,12 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireWorkspace } from '@/lib/workspace';
 import { PLAN_LIMITS, isUnderLimit, type Plan } from '@/lib/plans/constants';
+import { sendEmail } from '@/lib/email/send';
+import { getAppBaseUrl } from '@/lib/site-url';
 import type { MemberRole } from './constants';
 
 export async function inviteMemberAction(formData: FormData) {
-  const { supabase, user, workspaceId, role, plan } = await requireWorkspace();
+  const { supabase, user, workspaceId, role, plan, name } = await requireWorkspace();
 
   if (role !== 'owner' && role !== 'admin') {
     redirect('/team?error=not_authorized');
@@ -43,16 +45,40 @@ export async function inviteMemberAction(formData: FormData) {
     redirect('/team?error=plan_limit_reached');
   }
 
-  const { error } = await supabase.from('workspace_invitations').insert({
-    workspace_id: workspaceId,
-    email,
-    role: invitedRole,
-    invited_by: user.id,
-  });
+  const { data: invitation, error } = await supabase
+    .from('workspace_invitations')
+    .insert({
+      workspace_id: workspaceId,
+      email,
+      role: invitedRole,
+      invited_by: user.id,
+    })
+    .select('token')
+    .single();
 
   if (error) {
     console.error('[team.invite] insert workspace_invitations failed:', error);
     redirect('/team?error=invite_failed');
+  }
+
+  // Best-effort email (migration-free — Resend, gaps-checklist 4.4).
+  // The invite is fully usable via the shareable link either way (see
+  // the Team page), so a failed/unconfigured send never blocks the
+  // invite itself — it's a convenience on top of the existing flow,
+  // not a replacement for it.
+  if (invitation?.token) {
+    const inviteUrl = `${getAppBaseUrl()}/invite/${invitation.token}`;
+    await sendEmail({
+      to: email,
+      subject: `دعوة للانضمام إلى ${name || 'مساحة العمل'} على SocialSales OS`,
+      html: `
+        <div dir="rtl" style="font-family: sans-serif; text-align: right;">
+          <p>تمت دعوتك للانضمام إلى فريق "${name || 'مساحة العمل'}" على SocialSales OS.</p>
+          <p><a href="${inviteUrl}">اضغط هنا لقبول الدعوة</a></p>
+          <p style="color:#888; font-size: 12px;">إذا لم تكن تتوقع هذه الدعوة، يمكنك تجاهل هذه الرسالة.</p>
+        </div>
+      `,
+    });
   }
 
   revalidatePath('/team');

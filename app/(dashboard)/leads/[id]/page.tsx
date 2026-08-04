@@ -1,16 +1,27 @@
 import { notFound } from 'next/navigation';
-import { Phone, MessageCircle, Mail, StickyNote, History, CalendarClock } from 'lucide-react';
+import { Phone, MessageCircle, Mail, StickyNote, History, CalendarClock, Paperclip } from 'lucide-react';
 import { requireWorkspace } from '@/lib/workspace';
 import { hasFeature } from '@/lib/plans/constants';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Avatar } from '@/components/ui/avatar';
 import { ACTIVITY_LABELS, LEAD_STATUS_LABELS, LEAD_STATUS_TONE } from '@/lib/leads/constants';
+
+const NOTE_TYPE_LABELS: Record<string, string> = {
+  call: 'مكالمة',
+  meeting: 'اجتماع',
+  email: 'بريد إلكتروني',
+  whatsapp: 'واتساب',
+};
 import { digitsOnly, whatsAppLink } from '@/lib/utils';
 import { StatusSelect } from './status-select';
 import { NoteForm } from './note-form';
 import { FollowUpForm, CompleteFollowUpButton } from './follow-up-form';
 import { TagEditor } from './tag-editor';
+import { ValueEditor } from './value-editor';
+import { CustomFieldsEditor } from './custom-fields-editor';
+import { AttachmentsList } from './attachments-list';
+import { AiSuggestionButton } from './ai-suggestion-button';
 import { ReminderFormModal } from '@/app/(dashboard)/reminders/reminder-form-modal';
 
 export default async function LeadDetailPage({ params }: { params: { id: string } }) {
@@ -25,10 +36,10 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
 
   if (!lead) notFound();
 
-  const [{ data: notes }, { data: activities }, { data: followUps }] = await Promise.all([
+  const [{ data: notes }, { data: activities }, { data: followUps }, { data: customFieldDefs }] = await Promise.all([
     supabase
       .from('lead_notes')
-      .select('id, body, created_at')
+      .select('id, body, note_type, created_at')
       .eq('lead_id', lead.id)
       .order('created_at', { ascending: false }),
     supabase
@@ -42,7 +53,18 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
       .select('id, due_at, note, completed_at')
       .eq('lead_id', lead.id)
       .order('due_at', { ascending: true }),
+    supabase
+      .from('custom_field_definitions')
+      .select('id, key, label, field_type, options')
+      .eq('workspace_id', workspaceId)
+      .order('display_order', { ascending: true }),
   ]);
+
+  const { data: attachments } = await supabase
+    .from('lead_attachments')
+    .select('id, file_path, file_name, file_size, created_at')
+    .eq('lead_id', lead.id)
+    .order('created_at', { ascending: false });
 
   const pendingFollowUps = (followUps ?? []).filter((f) => !f.completed_at);
   const pastFollowUps = (followUps ?? []).filter((f) => f.completed_at);
@@ -106,6 +128,10 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
                 )}
               </div>
 
+              <div className="mt-3">
+                <ValueEditor leadId={lead.id} initialValue={lead.estimated_value} />
+              </div>
+
               {hasFeature(plan, 'tags') && (
                 <div className="mt-3">
                   <TagEditor leadId={lead.id} initialTags={lead.tags ?? []} />
@@ -119,6 +145,17 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
         </div>
       </Card>
 
+      {(customFieldDefs ?? []).length > 0 && (
+        <Card>
+          <CardHeader title="حقول إضافية" />
+          <CustomFieldsEditor
+            leadId={lead.id}
+            fields={customFieldDefs ?? []}
+            initialValues={(lead.custom_fields ?? {}) as Record<string, string>}
+          />
+        </Card>
+      )}
+
       {/* Follow-ups — moved above Notes/Activity: scheduling and
           completing the next touch-point is the highest-frequency
           action a salesperson takes on this page. */}
@@ -128,6 +165,10 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
           action={<ReminderFormModal leadId={lead.id} leadName={lead.full_name} triggerLabel="تذكير فوري" />}
         />
         <FollowUpForm leadId={lead.id} />
+
+        <div className="mt-3">
+          <AiSuggestionButton leadId={lead.id} phone={lead.phone} />
+        </div>
 
         <div className="mt-4 flex flex-col gap-2">
           {pendingFollowUps.map((f) => {
@@ -187,9 +228,14 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
             {(notes ?? []).map((note) => (
               <div key={note.id} className="rounded-md bg-surface-subtle p-3">
                 <p className="text-body-sm text-ink">{note.body}</p>
-                <p className="mt-1 text-caption text-ink-faint">
-                  {new Date(note.created_at).toLocaleString('ar-SA')}
-                </p>
+                <div className="mt-1 flex items-center gap-2">
+                  {note.note_type !== 'general' && (
+                    <Badge tone="neutral" size="sm">{NOTE_TYPE_LABELS[note.note_type] ?? note.note_type}</Badge>
+                  )}
+                  <p className="text-caption text-ink-faint">
+                    {new Date(note.created_at).toLocaleString('ar-SA')}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
@@ -219,6 +265,11 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
           )}
         </Card>
       </div>
+
+      <Card>
+        <CardHeader title="المرفقات" action={<Paperclip size={16} className="text-ink-faint" />} />
+        <AttachmentsList leadId={lead.id} workspaceId={workspaceId} initialAttachments={attachments ?? []} />
+      </Card>
     </div>
   );
 }

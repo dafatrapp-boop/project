@@ -18,8 +18,9 @@ import { AuthShell } from '@/components/auth/auth-shell';
 import { AuthCard } from '@/components/auth/auth-card';
 import { AuthAlert } from '@/components/auth/auth-alert';
 import { OnboardingSteps } from '@/components/auth/onboarding-steps';
-import { TEMPLATES } from '@/lib/landing-pages/templates';
+import { getTemplateForIndustry } from '@/lib/landing-pages/templates';
 import { slugify as slugifyAscii, insertWithUniqueSlug } from '@/lib/landing-pages/slug';
+import { validateIraqiPhone, phoneErrorMessage } from '@/lib/phone';
 
 const INDUSTRIES: {
   value:
@@ -49,6 +50,14 @@ const INDUSTRIES: {
 
 type Industry = (typeof INDUSTRIES)[number]['value'];
 
+const PHONE_ERROR_REASONS = {
+  empty: true,
+  invalid_chars: true,
+  invalid_prefix: true,
+  too_short: true,
+  too_long: true,
+} as const;
+
 // Reads/writes the current user's session and creates per-user rows —
 // must never be served from a cached response. See the matching note
 // in lib/supabase/server.ts (the fetch-level fix covers the data
@@ -73,9 +82,22 @@ async function createWorkspaceAction(formData: FormData) {
   const industry = String(
     formData.get('industry') ?? 'other'
   ) as Industry;
+  const whatsappRaw = String(formData.get('whatsapp') ?? '').trim();
 
   if (!name) {
     redirect('/onboarding/workspace?error=missing_name');
+  }
+
+  // Optional, but validated the same way as everywhere else in the app
+  // if provided — a merchant who bothers typing a number expects it to
+  // actually work, not silently save something wa.me can't open.
+  let whatsappNumber: string | null = null;
+  if (whatsappRaw) {
+    const check = validateIraqiPhone(whatsappRaw);
+    if (!check.valid) {
+      redirect(`/onboarding/workspace?error=${check.reason}`);
+    }
+    whatsappNumber = check.normalized!.replace('+', '');
   }
 
   const supabase = createClient();
@@ -117,6 +139,7 @@ async function createWorkspaceAction(formData: FormData) {
       slug,
       industry,
       owner_id: user.id,
+      default_whatsapp_number: whatsappNumber,
     })
     .select('id')
     .single();
@@ -149,9 +172,7 @@ async function createWorkspaceAction(formData: FormData) {
     );
   }
 
-  const template =
-    TEMPLATES.find((t) => t.id === industry) ??
-    TEMPLATES[TEMPLATES.length - 1];
+  const template = getTemplateForIndustry(industry);
 
   // Uses the same ASCII-only slugify + retry-on-collision helper as the
   // dashboard's own "create landing page" action (lib/landing-pages/slug.ts)
@@ -171,7 +192,7 @@ async function createWorkspaceAction(formData: FormData) {
         template: template.id,
         status: 'draft',
         sections: template.sections,
-        whatsapp_number: null,
+        whatsapp_number: whatsappNumber,
         meta_title: null,
         meta_description: null,
       }),
@@ -217,9 +238,11 @@ export default async function WorkspaceOnboardingPage({
   const errorMessage =
     searchParams.error === 'missing_name'
       ? 'يرجى إدخال اسم النشاط التجاري.'
-      : searchParams.error
-        ? 'تعذر إنشاء مساحة العمل. حاول مرة أخرى.'
-        : null;
+      : searchParams.error && searchParams.error in PHONE_ERROR_REASONS
+        ? phoneErrorMessage(searchParams.error as Parameters<typeof phoneErrorMessage>[0])
+        : searchParams.error
+          ? 'تعذر إنشاء مساحة العمل. حاول مرة أخرى.'
+          : null;
 
   return (
     <AuthShell
@@ -238,6 +261,14 @@ export default async function WorkspaceOnboardingPage({
             placeholder="مثال: عيادة الابتسامة"
             required
             autoComplete="organization"
+          />
+
+          <Input
+            name="whatsapp"
+            label="رقم واتساب للتواصل (اختياري، يمكنك إضافته لاحقًا)"
+            placeholder="07xxxxxxxxx"
+            dir="ltr"
+            hint="سيُستخدم تلقائيًا في صفحتك الأولى وكل صفحة جديدة تنشئها بعدها — لن تحتاج لكتابته مرة أخرى."
           />
 
           <fieldset>

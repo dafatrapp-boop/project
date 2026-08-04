@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Download, Upload, KanbanSquare, MoreVertical, Phone, MessageCircle, Users } from 'lucide-react';
+import { Download, Upload, KanbanSquare, MoreVertical, Phone, MessageCircle, Users, Trash2, Users2 } from 'lucide-react';
 import { requireWorkspace } from '@/lib/workspace';
 import { Table, type Column } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,8 @@ import { PageGuide } from '@/components/guide/page-guide';
 import { getGuideDismissed } from '@/lib/guide/state';
 import { LEADS_GUIDE } from '@/lib/guide/content';
 import { digitsOnly, whatsAppLink } from '@/lib/utils';
+import { Pagination } from '@/components/ui/pagination';
+import { DEFAULT_PAGE_SIZE, getPageRange, parsePageParam, splitPage } from '@/lib/pagination';
 import {
   LEAD_STATUS_LABELS,
   LEAD_STATUS_TONE,
@@ -40,20 +42,23 @@ const ERROR_MESSAGES: Record<string, string> = {
 export default async function LeadsPage({
   searchParams,
 }: {
-  searchParams: { q?: string; status?: string; tag?: string; error?: string };
+  searchParams: { q?: string; status?: string; tag?: string; error?: string; page?: string };
 }) {
-  const { supabase, workspaceId, plan, user } = await requireWorkspace();
+  const { supabase, workspaceId, plan, user, role } = await requireWorkspace();
   const showTags = hasFeature(plan, 'tags');
   const showKanban = hasFeature(plan, 'kanbanPipeline');
   const showImport = hasFeature(plan, 'csvImport');
   const showExcel = hasFeature(plan, 'excelExport');
+
+  const page = parsePageParam(searchParams.page);
+  const [from, to] = getPageRange(page, DEFAULT_PAGE_SIZE);
 
   let query = supabase
     .from('leads')
     .select('id, full_name, phone, source, status, tags, created_at')
     .eq('workspace_id', workspaceId)
     .order('created_at', { ascending: false })
-    .limit(50);
+    .range(from, to);
 
   if (searchParams.status) {
     query = query.eq('status', searchParams.status as LeadStatus);
@@ -68,10 +73,11 @@ export default async function LeadsPage({
 
   // Independent of each other — only need workspaceId/user.id, both
   // already resolved above.
-  const [{ data: leads }, guideDismissed] = await Promise.all([
+  const [{ data: leadsRaw }, guideDismissed] = await Promise.all([
     query,
     getGuideDismissed(supabase, user.id, 'leads'),
   ]);
+  const { rows: leads, hasMore } = splitPage(leadsRaw ?? [], DEFAULT_PAGE_SIZE);
 
   const columns: Column<LeadRow>[] = [
     {
@@ -147,6 +153,12 @@ export default async function LeadsPage({
     ...(showImport ? [{ label: 'استيراد CSV', icon: <Upload size={15} />, href: '/leads/import' }] : []),
     { label: 'تصدير CSV', icon: <Download size={15} />, href: '/api/exports/leads' },
     ...(showExcel ? [{ label: 'تصدير Excel', icon: <Download size={15} />, href: '/api/exports/leads-xlsx' }] : []),
+    ...(role === 'owner' || role === 'admin'
+      ? [
+          { label: 'العملاء المكررون', icon: <Users2 size={15} />, href: '/leads/duplicates' },
+          { label: 'سلة المحذوفات', icon: <Trash2 size={15} />, href: '/leads/trash' },
+        ]
+      : []),
   ];
 
   return (
@@ -224,13 +236,15 @@ export default async function LeadsPage({
 
       <Table<LeadRow>
         keyField={(row) => row.id}
-        rows={leads ?? []}
+        rows={leads}
         emptyIcon={Users}
         emptyTitle="لا يوجد عملاء محتملون بعد"
         emptyMessage="أضف أول عميل أو انتظر أول استمارة من صفحة الهبوط."
         emptyAction={<AddLeadButton />}
         columns={columns}
       />
+
+      <Pagination page={page} hasMore={hasMore} searchParams={searchParams} basePath="/leads" />
     </div>
   );
 }

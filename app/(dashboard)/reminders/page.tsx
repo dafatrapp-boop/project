@@ -3,6 +3,9 @@ import { PageHeader } from '@/components/ui/page-header';
 import { ReminderFormModal } from './reminder-form-modal';
 import { RemindersList, type ReminderRow } from './reminders-list';
 import type { ReminderType, ReminderStatus } from '@/lib/reminders/constants';
+import { getPageRange, parsePageParam, splitPage } from '@/lib/pagination';
+
+const HISTORY_PAGE_SIZE = 20;
 
 const ERROR_MESSAGES: Record<string, string> = {
   missing_title: 'يرجى إدخال عنوان للتذكير.',
@@ -47,13 +50,19 @@ function toRow(r: ReminderQueryRow): ReminderRow {
 export default async function RemindersPage({
   searchParams,
 }: {
-  searchParams: { error?: string; success?: string };
+  searchParams: { error?: string; success?: string; hpage?: string };
 }) {
   const { supabase, workspaceId } = await requireWorkspace();
 
   const selectColumns = 'id, title, description, reminder_type, scheduled_at, status, lead_id, task_id, campaign_id, last_error, leads(full_name)';
 
+  const historyPage = parsePageParam(searchParams.hpage);
+  const [hFrom, hTo] = getPageRange(historyPage, HISTORY_PAGE_SIZE);
+
   const [{ data: upcomingRaw }, { data: historyRaw }] = await Promise.all([
+    // Not paginated: only ever holds not-yet-fired reminders, inherently
+    // bounded by how far ahead a workspace schedules — unlike the
+    // history list below, this can't grow forever.
     supabase
       .from('reminders')
       .select(selectColumns)
@@ -67,11 +76,15 @@ export default async function RemindersPage({
       .eq('workspace_id', workspaceId)
       .in('status', ['sent', 'failed', 'cancelled'])
       .order('created_at', { ascending: false })
-      .limit(20),
+      .range(hFrom, hTo),
   ]);
 
   const upcoming = ((upcomingRaw ?? []) as unknown as ReminderQueryRow[]).map(toRow);
-  const history = ((historyRaw ?? []) as unknown as ReminderQueryRow[]).map(toRow);
+  const { rows: historyPageRows, hasMore: historyHasMore } = splitPage(
+    (historyRaw ?? []) as unknown as ReminderQueryRow[],
+    HISTORY_PAGE_SIZE
+  );
+  const history = historyPageRows.map(toRow);
 
   return (
     <div className="flex flex-col gap-6">
@@ -92,7 +105,13 @@ export default async function RemindersPage({
         </div>
       )}
 
-      <RemindersList upcoming={upcoming} history={history} />
+      <RemindersList
+        upcoming={upcoming}
+        history={history}
+        historyPage={historyPage}
+        historyHasMore={historyHasMore}
+        searchParams={searchParams}
+      />
     </div>
   );
 }
